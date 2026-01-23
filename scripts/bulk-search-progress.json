@@ -1,0 +1,10 @@
+{
+  "totalWords": 5459,
+  "processedWords": 5452,
+  "skippedWords": 0,
+  "failedWords": 7,
+  "lastProcessedWord": "poison",
+  "lastProcessedIndex": 5458,
+  "startedAt": "2026-01-13T21:35:17.695Z",
+  "lastUpdatedAt": "2026-01-14T06:42:11.122Z"
+}

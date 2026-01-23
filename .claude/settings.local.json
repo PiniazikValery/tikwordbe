@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(npm install:*)",
+      "Bash(test:*)",
+      "Bash(npm run build:*)",
+      "Bash(echo $ANTHROPIC_API_KEY)",
+      "Bash(npx ts-node:*)",
+      "Bash(npm run bulk-search:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
