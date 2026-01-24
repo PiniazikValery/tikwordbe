@@ -6,6 +6,7 @@ import {
   findJobByHash,
   findJobById,
   createJob,
+  deleteJob,
   JobStatus,
 } from '../db/jobQueue';
 
@@ -150,23 +151,20 @@ router.post('/search', async (req: Request<{}, {}, SearchRequest>, res: Response
         });
       }
 
-      // If job failed, return the error
+      // If job failed, delete it and allow immediate retry
       if (existingJob.status === 'failed') {
-        return res.json({
-          status: 'failed',
-          jobId: existingJob.id,
-          query: existingJob.normalizedQuery,
-          error: existingJob.error || 'Job processing failed'
-        });
+        console.log(`Deleting failed job for query: "${normalized}", allowing retry...`);
+        await deleteJob(existingJob.id);
+        // Fall through to create new job below
+      } else {
+        // Job is in progress, return status
+        return res.json(getInProgressResponse(
+          existingJob.id,
+          existingJob.normalizedQuery,
+          existingJob.status as JobStatus,
+          existingJob.currentVideoId
+        ));
       }
-
-      // Job is in progress, return status
-      return res.json(getInProgressResponse(
-        existingJob.id,
-        existingJob.normalizedQuery,
-        existingJob.status as JobStatus,
-        existingJob.currentVideoId
-      ));
     }
 
     // Step 5: Create new job

@@ -1,4 +1,4 @@
-import { getQueuedJobs } from '../db/jobQueue';
+import { getQueuedJobs, resetProcessingJobs } from '../db/jobQueue';
 import { processJob } from './jobProcessor';
 
 let isRunning = false;
@@ -91,10 +91,16 @@ async function workerLoop(): Promise<void> {
 }
 
 // Start the background worker
-export function startBackgroundWorker(): void {
+export async function startBackgroundWorker(): Promise<void> {
   if (isRunning) {
     console.log('[Background Worker] Already running');
     return;
+  }
+
+  // Clean up any jobs stuck from previous run (server restart)
+  const resetCount = await resetProcessingJobs();
+  if (resetCount > 0) {
+    console.log(`[Background Worker] Cleaned up ${resetCount} stuck jobs from previous run`);
   }
 
   console.log('[Background Worker] Starting...');

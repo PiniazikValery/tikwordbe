@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { spawn } from 'child_process';
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
@@ -7,6 +8,75 @@ export interface YouTubeVideo {
   videoId: string;
   title: string;
   description: string;
+}
+
+/**
+ * Search YouTube using yt-dlp (no API key required)
+ * Uses the ytsearch: prefix to search YouTube directly
+ */
+export async function searchVideosWithYtdlp(
+  query: string,
+  maxResults: number = 5
+): Promise<YouTubeVideo[]> {
+  return new Promise((resolve, reject) => {
+    const searchQuery = `ytsearch${maxResults}:${query}`;
+
+    const ytdlp = spawn('docker', [
+      'run',
+      '--rm',
+      'jauderho/yt-dlp:latest',
+      searchQuery,
+      '--flat-playlist',
+      '--dump-json',
+      '--no-warnings'
+    ]);
+
+    let output = '';
+    let errorOutput = '';
+
+    ytdlp.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    ytdlp.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+    });
+
+    ytdlp.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`yt-dlp search error: ${errorOutput}`);
+        resolve([]); // Return empty array on error instead of rejecting
+        return;
+      }
+
+      try {
+        // Each line is a separate JSON object
+        const videos: YouTubeVideo[] = output
+          .trim()
+          .split('\n')
+          .filter(line => line.trim())
+          .map(line => {
+            const data = JSON.parse(line);
+            return {
+              videoId: data.id,
+              title: data.title || '',
+              description: data.description || ''
+            };
+          })
+          .filter(v => v.videoId); // Filter out any without videoId
+
+        resolve(videos);
+      } catch (parseError: any) {
+        console.error(`Failed to parse yt-dlp output: ${parseError.message}`);
+        resolve([]);
+      }
+    });
+
+    ytdlp.on('error', (err) => {
+      console.error(`Failed to spawn yt-dlp: ${err.message}`);
+      resolve([]);
+    });
+  });
 }
 
 export interface SearchOptions {
@@ -63,81 +133,93 @@ export async function searchVideos(
 }
 
 /**
- * Search for videos with multiple filter strategies to minimize ads
- * Tries: 1) Creative Commons, 2) Short videos, 3) Medium videos, 4) Any
+ * Search for videos using yt-dlp (no API key required, no quota limits)
+ * Falls back to YouTube API if yt-dlp fails and API key is available
  */
 export async function searchVideosWithAdFilters(
   query: string,
   targetResults: number = 5
 ): Promise<YouTubeVideo[]> {
-  const strategies: SearchOptions[] = [
-    { videoLicense: 'creativeCommon', videoDuration: 'short' }, // CC + short (least ads)
-    { videoLicense: 'creativeCommon' }, // CC only
-    { videoDuration: 'short' }, // Short videos (< 4 min, fewer ads)
-    { videoDuration: 'medium' }, // Medium videos (4-20 min)
-    {} // No filters (fallback)
-  ];
+  console.log(`  Searching with yt-dlp: "${query}"`);
 
-  let allVideos: YouTubeVideo[] = [];
-  const seenIds = new Set<string>();
+  // Try yt-dlp first (no API key needed)
+  const videos = await searchVideosWithYtdlp(query, targetResults);
 
-  for (const options of strategies) {
-    const filterDesc = [];
-    if (options.videoLicense === 'creativeCommon') filterDesc.push('CC-licensed');
-    if (options.videoDuration) filterDesc.push(`${options.videoDuration} duration`);
-    const filterLabel = filterDesc.length > 0 ? filterDesc.join(' + ') : 'no filters';
+  if (videos.length > 0) {
+    console.log(`  Found ${videos.length} videos via yt-dlp`);
+    return videos;
+  }
 
+  // Fallback to API if yt-dlp returns nothing and API key is available
+  if (YOUTUBE_API_KEY) {
+    console.log(`  yt-dlp returned no results, trying YouTube API...`);
     try {
-      const videos = await searchVideos(query, 5, options);
-
-      // Deduplicate
-      const newVideos = videos.filter(v => !seenIds.has(v.videoId));
-      newVideos.forEach(v => seenIds.add(v.videoId));
-
-      if (newVideos.length > 0) {
-        console.log(`  Found ${newVideos.length} unique videos with ${filterLabel}`);
-        allVideos = [...allVideos, ...newVideos];
-      }
-
-      // Stop if we have enough videos
-      if (allVideos.length >= targetResults) {
-        break;
+      const apiVideos = await searchVideos(query, targetResults);
+      if (apiVideos.length > 0) {
+        console.log(`  Found ${apiVideos.length} videos via YouTube API`);
+        return apiVideos;
       }
     } catch (error: any) {
-      // Continue to next strategy if this one fails
-      console.log(`  No results with ${filterLabel}, trying next strategy...`);
+      console.log(`  YouTube API fallback failed: ${error.message}`);
     }
   }
 
-  return allVideos.slice(0, targetResults);
+  return [];
 }
 
 /**
- * Check if a video is embeddable (can be played on external websites)
+ * Check if a video is embeddable using yt-dlp (no API key required)
  */
 export async function isVideoEmbeddable(videoId: string): Promise<boolean> {
-  if (!YOUTUBE_API_KEY) {
-    throw new Error('YOUTUBE_API_KEY is not configured');
-  }
+  return new Promise((resolve) => {
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-  try {
-    const response = await axios.get(`${YOUTUBE_API_BASE_URL}/videos`, {
-      params: {
-        key: YOUTUBE_API_KEY,
-        id: videoId,
-        part: 'status'
+    const ytdlp = spawn('docker', [
+      'run',
+      '--rm',
+      'jauderho/yt-dlp:latest',
+      videoUrl,
+      '--dump-json',
+      '--no-download',
+      '--no-warnings'
+    ]);
+
+    let output = '';
+    let errorOutput = '';
+
+    ytdlp.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    ytdlp.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+    });
+
+    ytdlp.on('close', (code) => {
+      if (code !== 0) {
+        console.log(`  Video ${videoId} not available: ${errorOutput.slice(0, 100)}`);
+        resolve(false);
+        return;
+      }
+
+      try {
+        const data = JSON.parse(output);
+        // Check if video is playable
+        const isAvailable = data.availability === 'public' || data.availability === undefined;
+        const notLive = !data.is_live;
+        const notAgeRestricted = !data.age_limit || data.age_limit < 18;
+
+        const embeddable = isAvailable && notLive && notAgeRestricted;
+        resolve(embeddable);
+      } catch (parseError: any) {
+        console.log(`  Failed to parse video info for ${videoId}`);
+        resolve(false);
       }
     });
 
-    if (response.data.items && response.data.items.length > 0) {
-      const video = response.data.items[0];
-      return video.status?.embeddable === true;
-    }
-
-    return false;
-  } catch (error: any) {
-    console.error(`Error checking if video ${videoId} is embeddable:`, error.message);
-    // If we can't check, assume it's not embeddable to be safe
-    return false;
-  }
+    ytdlp.on('error', (err) => {
+      console.log(`  yt-dlp error checking ${videoId}: ${err.message}`);
+      resolve(false);
+    });
+  });
 }
