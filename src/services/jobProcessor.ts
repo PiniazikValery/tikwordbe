@@ -60,22 +60,23 @@ function cleanupTempFiles(videoId: string): void {
   }
 }
 
-// Generate multiple search strategies for better results
+// Generate multiple search strategies for better results (prioritizing no-ads content)
 function getSearchStrategies(normalizedQuery: string, queryType: 'word' | 'sentence'): string[] {
   const strategies: string[] = [];
 
   if (queryType === 'word') {
-    // For single words, use educational content first
-    strategies.push(`"${normalizedQuery}" explained`);
-    strategies.push(`${normalizedQuery} explained`);
-    strategies.push(normalizedQuery);
-    strategies.push(`"${normalizedQuery}"`);
+    // Prioritize educational/Creative Commons content (less likely to have ads)
+    strategies.push(`"${normalizedQuery}" pronunciation`); // Pronunciation videos are often short/no ads
+    strategies.push(`"${normalizedQuery}" meaning vocabulary`); // Educational vocabulary content
+    strategies.push(`${normalizedQuery} word definition`); // Dictionary-style content
+    strategies.push(`"${normalizedQuery}" english lesson`); // Educational content
+    strategies.push(`${normalizedQuery} explained`); // General educational
   } else {
-    // For multi-word phrases/sentences, prioritize exact matches
+    // For multi-word phrases/sentences, prioritize educational content
+    strategies.push(`"${normalizedQuery}" english`); // English learning content
+    strategies.push(`"${normalizedQuery}" example sentence`); // Educational examples
     strategies.push(`"${normalizedQuery}"`); // Exact phrase match
     strategies.push(normalizedQuery); // Natural match
-    strategies.push(`${normalizedQuery} example`); // With context
-    strategies.push(`"${normalizedQuery}" explained`); // Educational
   }
 
   return strategies;

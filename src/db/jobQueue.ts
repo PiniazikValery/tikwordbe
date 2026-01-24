@@ -186,6 +186,42 @@ export async function getQueuedJobs(): Promise<Job[]> {
   return result.rows;
 }
 
+export async function deleteJob(id: string): Promise<void> {
+  await pool.query(
+    `DELETE FROM job_queue WHERE id = $1`,
+    [id]
+  );
+}
+
 export async function closeJobQueuePool(): Promise<void> {
   await pool.end();
+}
+
+/**
+ * Clean up stuck jobs (jobs that were processing when server restarted)
+ * Deletes jobs stuck in processing states for more than the specified timeout
+ */
+export async function cleanupStuckJobs(timeoutMinutes: number = 30): Promise<number> {
+  const result = await pool.query(
+    `DELETE FROM job_queue
+     WHERE status IN ('searching', 'downloading', 'transcribing')
+     AND updated_at < NOW() - INTERVAL '${timeoutMinutes} minutes'
+     RETURNING id`
+  );
+
+  return result.rowCount || 0;
+}
+
+/**
+ * Reset all processing jobs to queued on startup
+ * This handles jobs that were interrupted by a server restart
+ */
+export async function resetProcessingJobs(): Promise<number> {
+  const result = await pool.query(
+    `DELETE FROM job_queue
+     WHERE status IN ('searching', 'downloading', 'transcribing')
+     RETURNING id`
+  );
+
+  return result.rowCount || 0;
 }
