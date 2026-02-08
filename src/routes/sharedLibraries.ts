@@ -156,7 +156,7 @@ router.get('/', browseRateLimit, async (req: Request, res: Response) => {
 });
 
 // POST /shared-libraries - Upload/share a library
-router.post('/', uploadRateLimit, async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const validationError = validateCreateInput(req.body);
     if (validationError) {
@@ -195,7 +195,7 @@ router.post('/', uploadRateLimit, async (req: Request, res: Response) => {
 });
 
 // PUT /shared-libraries/:id - Update a library
-router.put('/:id', uploadRateLimit, async (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!isValidUUID(id)) {
@@ -273,7 +273,7 @@ router.get('/:id', browseRateLimit, async (req: Request, res: Response) => {
 });
 
 // POST /shared-libraries/:id/download - Download library (increment counter)
-router.post('/:id/download', downloadRateLimit, async (req: Request, res: Response) => {
+router.post('/:id/download', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!isValidUUID(id)) {
