@@ -1,0 +1,32 @@
+{
+  "name": "Разговорные фразы",
+  "description": "Приветствия и прощания для повседневного общения",
+  "difficulty": "beginner",
+  "color": "#7B1FA2",
+  "icon": "chat",
+  "sourceLanguage": "en",
+  "targetLanguage": "ru",
+  "authorName": "TickWord",
+  "isFeatured": true,
+  "tags": ["greetings", "farewells", "conversation", "phrases"],
+  "words": [
+    { "word": "bye-bye", "translation": "пока-пока", "transcription": "/ˌbaɪ ˈbaɪ/" },
+    { "word": "good afternoon", "translation": "добрый день", "transcription": "/ɡʊd ˌɑːftərˈnuːn/" },
+    { "word": "good night", "translation": "Спокойной ночи", "transcription": "/ɡʊd naɪt/" },
+    { "word": "good morning", "translation": "доброе утро", "transcription": "/ɡʊd ˈmɔːrnɪŋ/" },
+    { "word": "good evening", "translation": "добрый вечер", "transcription": "/ɡʊd ˈiːvnɪŋ/" },
+    { "word": "take care", "translation": "заботиться", "transcription": "/teɪk keər/" },
+    { "word": "see you", "translation": "Увидимся", "transcription": "/siː juː/" },
+    { "word": "see you soon", "translation": "до скорой встречи", "transcription": "/siː juː suːn/" },
+    { "word": "see you later", "translation": "увидимся позже", "transcription": "/siː juː ˈleɪtər/" },
+    { "word": "good luck", "translation": "удачи", "transcription": "/ɡʊd lʌk/" },
+    { "word": "have a nice day", "translation": "хорошего дня", "transcription": "/hæv ə naɪs deɪ/" },
+    { "word": "talk to you later", "translation": "поговорим позже", "transcription": "/tɔːk tə juː ˈleɪtər/" },
+    { "word": "until we meet again", "translation": "пока мы не встретимся снова", "transcription": "/ənˈtɪl wiː miːt əˈɡen/" },
+    { "word": "till next time", "translation": "до следующего раза", "transcription": "/tɪl nekst taɪm/" },
+    { "word": "see ya", "translation": "увидимся", "transcription": "/siː jə/" },
+    { "word": "how are you today", "translation": "Как вы сегодня?", "transcription": "/haʊ ɑːr juː təˈdeɪ/" },
+    { "word": "I'll be back", "translation": "Я вернусь", "transcription": "/aɪl biː bæk/" },
+    { "word": "farewell", "translation": "прощание", "transcription": "/ˌfeərˈwel/" }
+  ]
+}

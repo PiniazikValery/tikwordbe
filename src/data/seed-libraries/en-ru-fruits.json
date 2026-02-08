@@ -1,0 +1,31 @@
+{
+  "name": "Фрукты",
+  "description": "Популярные фрукты и ягоды для здорового питания",
+  "difficulty": "beginner",
+  "color": "#EF5350",
+  "icon": "watermelon",
+  "sourceLanguage": "en",
+  "targetLanguage": "ru",
+  "authorName": "TickWord",
+  "isFeatured": true,
+  "tags": ["fruits", "food", "healthy", "berries"],
+  "words": [
+    { "word": "peach", "translation": "персик", "transcription": "/piːtʃ/" },
+    { "word": "pear", "translation": "груша", "transcription": "/peər/" },
+    { "word": "pineapple", "translation": "ананас", "transcription": "/ˈpaɪnæpl/" },
+    { "word": "apple", "translation": "яблоко", "transcription": "/ˈæpl/" },
+    { "word": "grapes", "translation": "виноград", "transcription": "/ɡreɪps/" },
+    { "word": "lemon", "translation": "лимон", "transcription": "/ˈlemən/" },
+    { "word": "melon", "translation": "дыня", "transcription": "/ˈmelən/" },
+    { "word": "strawberry", "translation": "клубника", "transcription": "/ˈstrɔːbəri/" },
+    { "word": "watermelon", "translation": "арбуз", "transcription": "/ˈwɔːtərmelən/" },
+    { "word": "banana", "translation": "банан", "transcription": "/bəˈnɑːnə/" },
+    { "word": "cherry", "translation": "вишня", "transcription": "/ˈtʃeri/" },
+    { "word": "apricot", "translation": "абрикос", "transcription": "/ˈeɪprɪkɒt/" },
+    { "word": "avocado", "translation": "авокадо", "transcription": "/ˌævəˈkɑːdəʊ/" },
+    { "word": "coconut", "translation": "кокос", "transcription": "/ˈkəʊkənʌt/" },
+    { "word": "kiwi", "translation": "киви", "transcription": "/ˈkiːwiː/" },
+    { "word": "pomegranate", "translation": "гранат", "transcription": "/ˈpɒmɪɡrænɪt/" },
+    { "word": "tangerine", "translation": "мандарин", "transcription": "/ˌtændʒəˈriːn/" }
+  ]
+}

@@ -10,12 +10,15 @@ import analyzeSentenceRouter from './routes/analyzeSentence';
 import analyzeStreamRouter from './routes/analyzeStream';
 import wordIndexRouter from './routes/wordIndex';
 import testSearchRouter from './routes/testSearch';
+import sharedLibrariesRouter from './routes/sharedLibraries';
 import { initializeDatabase } from './db/videoExamples';
 import { initializeJobQueue } from './db/jobQueue';
 import { initializeSentenceAnalysisDB } from './db/sentenceAnalyses';
 import { initializeRateLimitDB } from './db/rateLimits';
 import { initializeAiPaywallDB } from './db/aiPaywall';
 import { initializeWordIndexTable } from './db/wordIndex';
+import { initializeSharedLibrariesDB } from './db/sharedLibraries';
+import { seedSharedLibraries } from './db/seedSharedLibraries';
 import { startBackgroundWorker, stopBackgroundWorker } from './services/backgroundWorker';
 
 // Debug: Check if env vars are loaded
@@ -37,6 +40,7 @@ app.use('/api', analyzeStreamRouter);
 app.use('/api', analyzeSentenceRouter);
 app.use('/word-index', wordIndexRouter);
 app.use('/test', testSearchRouter);
+app.use('/shared-libraries', sharedLibrariesRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -76,6 +80,14 @@ async function startServer() {
     await initializeWordIndexTable();
     console.log('Word index initialized successfully');
 
+    console.log('Initializing shared libraries database...');
+    await initializeSharedLibrariesDB();
+    console.log('Shared libraries database initialized successfully');
+
+    console.log('Seeding shared libraries...');
+    await seedSharedLibraries();
+    console.log('Shared libraries seeding complete');
+
     console.log('Starting background worker...');
     startBackgroundWorker();
     console.log('Background worker started successfully');
@@ -89,6 +101,8 @@ async function startServer() {
       console.log(`Word examples: GET http://localhost:${PORT}/word-index/examples/:word`);
       console.log(`Word index (detailed): GET http://localhost:${PORT}/word-index/word/:word`);
       console.log(`Word stats: GET http://localhost:${PORT}/word-index/stats`);
+      console.log(`Shared libraries: GET http://localhost:${PORT}/shared-libraries`);
+      console.log(`Share library: POST http://localhost:${PORT}/shared-libraries`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
