@@ -1,5 +1,6 @@
 import { getQueuedJobs, resetProcessingJobs } from '../db/jobQueue';
 import { processJob } from './jobProcessor';
+import { processVideoIndex } from './videoIndexProcessor';
 
 let isRunning = false;
 let workerInterval: NodeJS.Timeout | null = null;
@@ -14,13 +15,19 @@ const POLL_INTERVAL = 2000; // 2 seconds
 const runningJobs = new Map<string, Promise<void>>();
 
 // Process a single job
-async function startJobProcessing(hash: string, normalizedQuery: string, queryType: 'word' | 'sentence'): Promise<void> {
+async function startJobProcessing(hash: string, normalizedQuery: string, queryType: 'word' | 'sentence' | 'video-index'): Promise<void> {
   console.log(`\n[Background Worker] Starting job: "${normalizedQuery}" (type: ${queryType})`);
   console.log(`[Background Worker] Active jobs: ${runningJobs.size}/${MAX_CONCURRENT_JOBS}`);
 
   try {
-    // Process the job (this will update its status as it progresses)
-    await processJob(hash, normalizedQuery, queryType);
+    // Route to appropriate processor based on job type
+    if (queryType === 'video-index') {
+      // For video indexing, normalizedQuery contains the video ID
+      await processVideoIndex(hash, normalizedQuery);
+    } else {
+      // Process regular word/sentence search job
+      await processJob(hash, normalizedQuery, queryType);
+    }
   } catch (error: any) {
     console.error(`[Background Worker] Error processing job "${normalizedQuery}":`, error.message);
   } finally {

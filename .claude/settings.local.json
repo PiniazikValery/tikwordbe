@@ -7,7 +7,8 @@
       "Bash(npm run build:*)",
       "Bash(echo $ANTHROPIC_API_KEY)",
       "Bash(npx ts-node:*)",
-      "Bash(npm run bulk-search:*)"
+      "Bash(npm run bulk-search:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []

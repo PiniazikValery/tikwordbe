@@ -24,6 +24,9 @@ export interface JobResult {
   endTime: number;
   caption: string;
   captions: CaptionSegment[];
+  // Additional fields for video-index jobs
+  segmentsIndexed?: number;
+  wordsIndexed?: number;
 }
 
 export interface Job {
@@ -31,7 +34,7 @@ export interface Job {
   hash: string;
   query: string;
   normalizedQuery: string;
-  queryType: 'word' | 'sentence';
+  queryType: 'word' | 'sentence' | 'video-index';
   status: JobStatus;
   currentVideoId?: string;
   result?: JobResult;
@@ -44,7 +47,7 @@ export interface JobInsert {
   hash: string;
   query: string;
   normalizedQuery: string;
-  queryType: 'word' | 'sentence';
+  queryType: 'word' | 'sentence' | 'video-index';
 }
 
 export async function initializeJobQueue(): Promise<void> {

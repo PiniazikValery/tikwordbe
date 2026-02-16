@@ -11,6 +11,7 @@ import analyzeStreamRouter from './routes/analyzeStream';
 import wordIndexRouter from './routes/wordIndex';
 import testSearchRouter from './routes/testSearch';
 import sharedLibrariesRouter from './routes/sharedLibraries';
+import videoIndexRouter from './routes/videoIndex';
 import { initializeDatabase } from './db/videoExamples';
 import { initializeJobQueue } from './db/jobQueue';
 import { initializeSentenceAnalysisDB } from './db/sentenceAnalyses';
@@ -41,6 +42,7 @@ app.use('/api', analyzeSentenceRouter);
 app.use('/word-index', wordIndexRouter);
 app.use('/test', testSearchRouter);
 app.use('/shared-libraries', sharedLibrariesRouter);
+app.use('/video-index', videoIndexRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -103,6 +105,7 @@ async function startServer() {
       console.log(`Word stats: GET http://localhost:${PORT}/word-index/stats`);
       console.log(`Shared libraries: GET http://localhost:${PORT}/shared-libraries`);
       console.log(`Share library: POST http://localhost:${PORT}/shared-libraries`);
+      console.log(`Index video: POST http://localhost:${PORT}/video-index/index`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
