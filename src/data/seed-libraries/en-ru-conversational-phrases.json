@@ -3,7 +3,7 @@
   "description": "Полезные разговорные выражения для повседневного общения",
   "difficulty": "intermediate",
   "color": "#7B1FA2",
-  "icon": "chat",
+  "icon": "chatbubble",
   "sourceLanguage": "en",
   "targetLanguage": "ru",
   "authorName": "TickWord",

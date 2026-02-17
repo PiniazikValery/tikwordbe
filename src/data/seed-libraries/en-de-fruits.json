@@ -1,0 +1,31 @@
+{
+  "name": "Früchte",
+  "description": "Beliebte Früchte und Beeren für eine gesunde Ernährung",
+  "difficulty": "beginner",
+  "color": "#EF5350",
+  "icon": "nutrition",
+  "sourceLanguage": "en",
+  "targetLanguage": "de",
+  "authorName": "TickWord",
+  "isFeatured": true,
+  "tags": ["fruits", "food", "healthy", "berries"],
+  "words": [
+    { "word": "peach", "translation": "Pfirsich", "transcription": "/piːtʃ/" },
+    { "word": "pear", "translation": "Birne", "transcription": "/peər/" },
+    { "word": "pineapple", "translation": "Ananas", "transcription": "/ˈpaɪnæpl/" },
+    { "word": "apple", "translation": "Apfel", "transcription": "/ˈæpl/" },
+    { "word": "grapes", "translation": "Trauben", "transcription": "/ɡreɪps/" },
+    { "word": "lemon", "translation": "Zitrone", "transcription": "/ˈlemən/" },
+    { "word": "melon", "translation": "Melone", "transcription": "/ˈmelən/" },
+    { "word": "strawberry", "translation": "Erdbeere", "transcription": "/ˈstrɔːbəri/" },
+    { "word": "watermelon", "translation": "Wassermelone", "transcription": "/ˈwɔːtərmelən/" },
+    { "word": "banana", "translation": "Banane", "transcription": "/bəˈnɑːnə/" },
+    { "word": "cherry", "translation": "Kirsche", "transcription": "/ˈtʃeri/" },
+    { "word": "apricot", "translation": "Aprikose", "transcription": "/ˈeɪprɪkɒt/" },
+    { "word": "avocado", "translation": "Avocado", "transcription": "/ˌævəˈkɑːdəʊ/" },
+    { "word": "coconut", "translation": "Kokosnuss", "transcription": "/ˈkəʊkənʌt/" },
+    { "word": "kiwi", "translation": "Kiwi", "transcription": "/ˈkiːwiː/" },
+    { "word": "pomegranate", "translation": "Granatapfel", "transcription": "/ˈpɒmɪɡrænɪt/" },
+    { "word": "tangerine", "translation": "Mandarine", "transcription": "/ˌtændʒəˈriːn/" }
+  ]
+}

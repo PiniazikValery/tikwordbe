@@ -3,7 +3,7 @@
   "description": "Основные цвета и оттенки для повседневного использования",
   "difficulty": "beginner",
   "color": "#F44336",
-  "icon": "palette",
+  "icon": "color-palette",
   "sourceLanguage": "en",
   "targetLanguage": "ru",
   "authorName": "TickWord",

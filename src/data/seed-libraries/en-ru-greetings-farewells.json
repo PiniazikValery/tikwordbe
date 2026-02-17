@@ -3,7 +3,7 @@
   "description": "Приветствия и прощания для повседневного общения",
   "difficulty": "beginner",
   "color": "#7B1FA2",
-  "icon": "chat",
+  "icon": "chatbubbles",
   "sourceLanguage": "en",
   "targetLanguage": "ru",
   "authorName": "TickWord",

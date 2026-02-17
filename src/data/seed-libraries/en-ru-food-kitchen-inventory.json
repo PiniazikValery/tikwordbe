@@ -3,7 +3,7 @@
   "description": "Еда, напитки и кухонные принадлежности для повседневной жизни",
   "difficulty": "intermediate",
   "color": "#FF9800",
-  "icon": "utensils",
+  "icon": "restaurant",
   "sourceLanguage": "en",
   "targetLanguage": "ru",
   "authorName": "TickWord",

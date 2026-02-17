@@ -1,0 +1,32 @@
+{
+  "name": "Gemüse",
+  "description": "Основные овощи и зелень для повседневного питания",
+  "difficulty": "beginner",
+  "color": "#66BB6A",
+  "icon": "leaf",
+  "sourceLanguage": "en",
+  "targetLanguage": "de",
+  "authorName": "TickWord",
+  "isFeatured": true,
+  "tags": ["vegetables", "food", "cooking", "healthy"],
+  "words": [
+    { "word": "carrot", "translation": "Karotte", "transcription": "/ˈkærət/" },
+    { "word": "cauliflower", "translation": "Blumenkohl", "transcription": "/ˈkɒliflaʊər/" },
+    { "word": "eggplant", "translation": "Aubergine", "transcription": "/ˈeɡplɑːnt/" },
+    { "word": "mushrooms", "translation": "Pilze", "transcription": "/ˈmʌʃruːmz/" },
+    { "word": "onion", "translation": "Zwiebel", "transcription": "/ˈʌnjən/" },
+    { "word": "pepper", "translation": "Pfeffer", "transcription": "/ˈpepər/" },
+    { "word": "potatoes", "translation": "Kartoffeln", "transcription": "/pəˈteɪtəʊz/" },
+    { "word": "cucumber", "translation": "Gurke", "transcription": "/ˈkjuːkʌmbər/" },
+    { "word": "lettuce", "translation": "Kopfsalat", "transcription": "/ˈletɪs/" },
+    { "word": "tomatoes", "translation": "Tomaten", "transcription": "/təˈmɑːtəʊz/" },
+    { "word": "celery", "translation": "Sellerie", "transcription": "/ˈseləri/" },
+    { "word": "garlic", "translation": "Knoblauch", "transcription": "/ˈɡɑːrlɪk/" },
+    { "word": "parsley", "translation": "Petersilie", "transcription": "/ˈpɑːrsli/" },
+    { "word": "pumpkin", "translation": "Kürbis", "transcription": "/ˈpʌmpkɪn/" },
+    { "word": "courgette", "translation": "Zucchini", "transcription": "/kʊərˈʒet/" },
+    { "word": "radishes", "translation": "Radieschen", "transcription": "/ˈrædɪʃɪz/" },
+    { "word": "green beans", "translation": "grüne Bohnen", "transcription": "/ɡriːn biːnz/" },
+    { "word": "hot pepper", "translation": "scharfe Paprika", "transcription": "/hɒt ˈpepər/" }
+  ]
+}

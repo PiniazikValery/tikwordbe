@@ -3,7 +3,7 @@
   "description": "Городские объекты, места и услуги для повседневной жизни",
   "difficulty": "intermediate",
   "color": "#42A5F5",
-  "icon": "city",
+  "icon": "storefront",
   "sourceLanguage": "en",
   "targetLanguage": "ru",
   "authorName": "TickWord",
