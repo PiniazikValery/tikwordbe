@@ -1,0 +1,32 @@
+{
+  "name": "Frases conversacionales",
+  "description": "Saludos y despedidas para la comunicación cotidiana.",
+  "difficulty": "beginner",
+  "color": "#7B1FA2",
+  "icon": "chatbubbles",
+  "sourceLanguage": "en",
+  "targetLanguage": "es",
+  "authorName": "TickWord",
+  "isFeatured": true,
+  "tags": ["greetings", "farewells", "conversation", "phrases"],
+  "words": [
+    { "word": "bye-bye", "translation": "adiós", "transcription": "/ˌbaɪ ˈbaɪ/" },
+    { "word": "good afternoon", "translation": "buenas tardes", "transcription": "/ɡʊd ˌɑːftərˈnuːn/" },
+    { "word": "good night", "translation": "buenas noches", "transcription": "/ɡʊd naɪt/" },
+    { "word": "good morning", "translation": "buen día", "transcription": "/ɡʊd ˈmɔːrnɪŋ/" },
+    { "word": "good evening", "translation": "buenas noches", "transcription": "/ɡʊd ˈiːvnɪŋ/" },
+    { "word": "take care", "translation": "cuidarse", "transcription": "/teɪk keər/" },
+    { "word": "see you", "translation": "nos vemos", "transcription": "/siː juː/" },
+    { "word": "see you soon", "translation": "nos vemos pronto", "transcription": "/siː juː suːn/" },
+    { "word": "see you later", "translation": "hasta luego", "transcription": "/siː juː ˈleɪtər/" },
+    { "word": "good luck", "translation": "buena suerte", "transcription": "/ɡʊd lʌk/" },
+    { "word": "have a nice day", "translation": "que tenga un lindo día", "transcription": "/hæv ə naɪs deɪ/" },
+    { "word": "talk to you later", "translation": "Hablaré contigo más tarde", "transcription": "/tɔːk tə juː ˈleɪtər/" },
+    { "word": "until we meet again", "translation": "hasta que nos volvamos a encontrar", "transcription": "/ənˈtɪl wiː miːt əˈɡen/" },
+    { "word": "till next time", "translation": "hasta la próxima", "transcription": "/tɪl nekst taɪm/" },
+    { "word": "see ya", "translation": "nos vemos", "transcription": "/siː jə/" },
+    { "word": "how are you today", "translation": "cómo estás hoy?", "transcription": "/haʊ ɑːr juː təˈdeɪ/" },
+    { "word": "I'll be back", "translation": "Vuelvo enseguida", "transcription": "/aɪl biː bæk/" },
+    { "word": "farewell", "translation": "despedida", "transcription": "/ˌfeərˈwel/" }
+  ]
+}

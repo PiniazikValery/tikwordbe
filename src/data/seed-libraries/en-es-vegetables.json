@@ -1,0 +1,32 @@
+{
+  "name": "Verduras",
+  "description": "Verduras y hortalizas esenciales para la nutrición diaria",
+  "difficulty": "beginner",
+  "color": "#66BB6A",
+  "icon": "leaf",
+  "sourceLanguage": "en",
+  "targetLanguage": "es",
+  "authorName": "TickWord",
+  "isFeatured": true,
+  "tags": ["vegetables", "food", "cooking", "healthy"],
+  "words": [
+    { "word": "carrot", "translation": "zanahoria", "transcription": "/ˈkærət/" },
+    { "word": "cauliflower", "translation": "coliflor", "transcription": "/ˈkɒliflaʊər/" },
+    { "word": "eggplant", "translation": "berenjena", "transcription": "/ˈeɡplɑːnt/" },
+    { "word": "mushrooms", "translation": "champiñones", "transcription": "/ˈmʌʃruːmz/" },
+    { "word": "onion", "translation": "cebolla", "transcription": "/ˈʌnjən/" },
+    { "word": "pepper", "translation": "pimiento", "transcription": "/ˈpepər/" },
+    { "word": "potatoes", "translation": "patatas", "transcription": "/pəˈteɪtəʊz/" },
+    { "word": "cucumber", "translation": "pepino", "transcription": "/ˈkjuːkʌmbər/" },
+    { "word": "lettuce", "translation": "lechuga", "transcription": "/ˈletɪs/" },
+    { "word": "tomatoes", "translation": "tomates", "transcription": "/təˈmɑːtəʊz/" },
+    { "word": "celery", "translation": "apio", "transcription": "/ˈseləri/" },
+    { "word": "garlic", "translation": "ajo", "transcription": "/ˈɡɑːrlɪk/" },
+    { "word": "parsley", "translation": "perejil", "transcription": "/ˈpɑːrsli/" },
+    { "word": "pumpkin", "translation": "calabaza", "transcription": "/ˈpʌmpkɪn/" },
+    { "word": "courgette", "translation": "calabacín", "transcription": "/kʊərˈʒet/" },
+    { "word": "radishes", "translation": "rábanos", "transcription": "/ˈrædɪʃɪz/" },
+    { "word": "green beans", "translation": "judías verdes", "transcription": "/ɡriːn biːnz/" },
+    { "word": "hot pepper", "translation": "chile", "transcription": "/hɒt ˈpepər/" }
+  ]
+}

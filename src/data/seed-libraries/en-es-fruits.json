@@ -1,0 +1,31 @@
+{
+  "name": "Frutas",
+  "description": "Frutas y bayas populares para una dieta saludable",
+  "difficulty": "beginner",
+  "color": "#EF5350",
+  "icon": "nutrition",
+  "sourceLanguage": "en",
+  "targetLanguage": "es",
+  "authorName": "TickWord",
+  "isFeatured": true,
+  "tags": ["fruits", "food", "healthy", "berries"],
+  "words": [
+    { "word": "peach", "translation": "durazno", "transcription": "/piːtʃ/" },
+    { "word": "pear", "translation": "pera", "transcription": "/peər/" },
+    { "word": "pineapple", "translation": "piña", "transcription": "/ˈpaɪnæpl/" },
+    { "word": "apple", "translation": "manzana", "transcription": "/ˈæpl/" },
+    { "word": "grapes", "translation": "uvas", "transcription": "/ɡreɪps/" },
+    { "word": "lemon", "translation": "limón", "transcription": "/ˈlemən/" },
+    { "word": "melon", "translation": "melón", "transcription": "/ˈmelən/" },
+    { "word": "strawberry", "translation": "fresa", "transcription": "/ˈstrɔːbəri/" },
+    { "word": "watermelon", "translation": "sandía", "transcription": "/ˈwɔːtərmelən/" },
+    { "word": "banana", "translation": "banana", "transcription": "/bəˈnɑːnə/" },
+    { "word": "cherry", "translation": "cereza", "transcription": "/ˈtʃeri/" },
+    { "word": "apricot", "translation": "albaricoque", "transcription": "/ˈeɪprɪkɒt/" },
+    { "word": "avocado", "translation": "palta", "transcription": "/ˌævəˈkɑːdəʊ/" },
+    { "word": "coconut", "translation": "Coco", "transcription": "/ˈkəʊkənʌt/" },
+    { "word": "kiwi", "translation": "kiwi", "transcription": "/ˈkiːwiː/" },
+    { "word": "pomegranate", "translation": "granada", "transcription": "/ˈpɒmɪɡrænɪt/" },
+    { "word": "tangerine", "translation": "Mandarina", "transcription": "/ˌtændʒəˈriːn/" }
+  ]
+}
