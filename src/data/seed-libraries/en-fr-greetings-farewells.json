@@ -1,0 +1,32 @@
+{
+  "name": "Expressions conversationnelles",
+  "description": "Salutations et adieux pour la communication quotidienne",
+  "difficulty": "beginner",
+  "color": "#7B1FA2",
+  "icon": "chatbubbles",
+  "sourceLanguage": "en",
+  "targetLanguage": "fr",
+  "authorName": "TickWord",
+  "isFeatured": true,
+  "tags": ["greetings", "farewells", "conversation", "phrases"],
+  "words": [
+    { "word": "bye-bye", "translation": "au revoir", "transcription": "/ˌbaɪ ˈbaɪ/" },
+    { "word": "good afternoon", "translation": "bon après-midi", "transcription": "/ɡʊd ˌɑːftərˈnuːn/" },
+    { "word": "good night", "translation": "bonne nuit", "transcription": "/ɡʊd naɪt/" },
+    { "word": "good morning", "translation": "bonjour", "transcription": "/ɡʊd ˈmɔːrnɪŋ/" },
+    { "word": "good evening", "translation": "bonsoir", "transcription": "/ɡʊd ˈiːvnɪŋ/" },
+    { "word": "take care", "translation": "prends soin de toi", "transcription": "/teɪk keər/" },
+    { "word": "see you", "translation": "à bientôt", "transcription": "/siː juː/" },
+    { "word": "see you soon", "translation": "à bientôt", "transcription": "/siː juː suːn/" },
+    { "word": "see you later", "translation": "à plus tard", "transcription": "/siː juː ˈleɪtər/" },
+    { "word": "good luck", "translation": "bonne chance", "transcription": "/ɡʊd lʌk/" },
+    { "word": "have a nice day", "translation": "bonne journée", "transcription": "/hæv ə naɪs deɪ/" },
+    { "word": "talk to you later", "translation": "on se parle plus tard", "transcription": "/tɔːk tə juː ˈleɪtər/" },
+    { "word": "until we meet again", "translation": "jusqu'à ce qu'on se revoie", "transcription": "/ənˈtɪl wiː miːt əˈɡen/" },
+    { "word": "till next time", "translation": "à la prochaine fois", "transcription": "/tɪl nekst taɪm/" },
+    { "word": "see ya", "translation": "à plus", "transcription": "/siː jə/" },
+    { "word": "how are you today", "translation": "comment allez-vous aujourd'hui ?", "transcription": "/haʊ ɑːr juː təˈdeɪ/" },
+    { "word": "I'll be back", "translation": "je reviendrai", "transcription": "/aɪl biː bæk/" },
+    { "word": "farewell", "translation": "adieu", "transcription": "/ˌfeərˈwel/" }
+  ]
+}

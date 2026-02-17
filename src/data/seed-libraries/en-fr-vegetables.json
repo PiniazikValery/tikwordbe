@@ -1,0 +1,32 @@
+{
+  "name": "Légumes",
+  "description": "Légumes et légumes verts essentiels pour une alimentation quotidienne",
+  "difficulty": "beginner",
+  "color": "#66BB6A",
+  "icon": "leaf",
+  "sourceLanguage": "en",
+  "targetLanguage": "fr",
+  "authorName": "TickWord",
+  "isFeatured": true,
+  "tags": ["vegetables", "food", "cooking", "healthy"],
+  "words": [
+    { "word": "carrot", "translation": "carotte", "transcription": "/ˈkærət/" },
+    { "word": "cauliflower", "translation": "chou-fleur", "transcription": "/ˈkɒliflaʊər/" },
+    { "word": "eggplant", "translation": "aubergine", "transcription": "/ˈeɡplɑːnt/" },
+    { "word": "mushrooms", "translation": "champignons", "transcription": "/ˈmʌʃruːmz/" },
+    { "word": "onion", "translation": "oignon", "transcription": "/ˈʌnjən/" },
+    { "word": "pepper", "translation": "poivron", "transcription": "/ˈpepər/" },
+    { "word": "potatoes", "translation": "pommes de terre", "transcription": "/pəˈteɪtəʊz/" },
+    { "word": "cucumber", "translation": "concombre", "transcription": "/ˈkjuːkʌmbər/" },
+    { "word": "lettuce", "translation": "laitue", "transcription": "/ˈletɪs/" },
+    { "word": "tomatoes", "translation": "tomates", "transcription": "/təˈmɑːtəʊz/" },
+    { "word": "celery", "translation": "céleri", "transcription": "/ˈseləri/" },
+    { "word": "garlic", "translation": "ail", "transcription": "/ˈɡɑːrlɪk/" },
+    { "word": "parsley", "translation": "persil", "transcription": "/ˈpɑːrsli/" },
+    { "word": "pumpkin", "translation": "citrouille", "transcription": "/ˈpʌmpkɪn/" },
+    { "word": "courgette", "translation": "courgette", "transcription": "/kʊərˈʒet/" },
+    { "word": "radishes", "translation": "radis", "transcription": "/ˈrædɪʃɪz/" },
+    { "word": "green beans", "translation": "haricots verts", "transcription": "/ɡriːn biːnz/" },
+    { "word": "hot pepper", "translation": "piment", "transcription": "/hɒt ˈpepər/" }
+  ]
+}

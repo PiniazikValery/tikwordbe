@@ -1,0 +1,31 @@
+{
+  "name": "Fruits",
+  "description": "Fruits et baies populaires pour une alimentation saine",
+  "difficulty": "beginner",
+  "color": "#EF5350",
+  "icon": "nutrition",
+  "sourceLanguage": "en",
+  "targetLanguage": "fr",
+  "authorName": "TickWord",
+  "isFeatured": true,
+  "tags": ["fruits", "food", "healthy", "berries"],
+  "words": [
+    { "word": "peach", "translation": "pêche", "transcription": "/piːtʃ/" },
+    { "word": "pear", "translation": "poire", "transcription": "/peər/" },
+    { "word": "pineapple", "translation": "ananas", "transcription": "/ˈpaɪnæpl/" },
+    { "word": "apple", "translation": "pomme", "transcription": "/ˈæpl/" },
+    { "word": "grapes", "translation": "raisin", "transcription": "/ɡreɪps/" },
+    { "word": "lemon", "translation": "citron", "transcription": "/ˈlemən/" },
+    { "word": "melon", "translation": "melon", "transcription": "/ˈmelən/" },
+    { "word": "strawberry", "translation": "fraise", "transcription": "/ˈstrɔːbəri/" },
+    { "word": "watermelon", "translation": "pastèque", "transcription": "/ˈwɔːtərmelən/" },
+    { "word": "banana", "translation": "banane", "transcription": "/bəˈnɑːnə/" },
+    { "word": "cherry", "translation": "cerise", "transcription": "/ˈtʃeri/" },
+    { "word": "apricot", "translation": "abricot", "transcription": "/ˈeɪprɪkɒt/" },
+    { "word": "avocado", "translation": "avocat", "transcription": "/ˌævəˈkɑːdəʊ/" },
+    { "word": "coconut", "translation": "noix de coco", "transcription": "/ˈkəʊkənʌt/" },
+    { "word": "kiwi", "translation": "kiwi", "transcription": "/ˈkiːwiː/" },
+    { "word": "pomegranate", "translation": "grenade", "transcription": "/ˈpɒmɪɡrænɪt/" },
+    { "word": "tangerine", "translation": "mandarine", "transcription": "/ˌtændʒəˈriːn/" }
+  ]
+}
