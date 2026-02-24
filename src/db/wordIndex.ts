@@ -19,6 +19,13 @@ export interface VideoResponse {
     end: number;
     text: string;
   }>;
+  popularity?: {
+    score: number;
+    viewCount: number;
+    likeCount: number;
+    commentCount: number;
+    calculatedAt: string;
+  };
 }
 
 export interface WordIndexEntry {

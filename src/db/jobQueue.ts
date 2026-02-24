@@ -39,6 +39,7 @@ export interface Job {
   currentVideoId?: string;
   result?: JobResult;
   error?: string;
+  metadata?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +49,7 @@ export interface JobInsert {
   query: string;
   normalizedQuery: string;
   queryType: 'word' | 'sentence' | 'video-index';
+  metadata?: Record<string, any>;
 }
 
 export async function initializeJobQueue(): Promise<void> {
@@ -84,6 +86,19 @@ export async function initializeJobQueue(): Promise<void> {
         END IF;
       END $$;
     `);
+
+    // Add metadata column if it doesn't exist (for existing tables)
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'job_queue' AND column_name = 'metadata'
+        ) THEN
+          ALTER TABLE job_queue ADD COLUMN metadata JSONB;
+        END IF;
+      END $$;
+    `);
   } finally {
     client.release();
   }
@@ -93,7 +108,7 @@ export async function findJobByHash(hash: string): Promise<Job | null> {
   const result = await pool.query(
     `SELECT id, hash, query, normalized_query as "normalizedQuery",
             query_type as "queryType", status,
-            current_video_id as "currentVideoId", result, error,
+            current_video_id as "currentVideoId", result, error, metadata,
             created_at as "createdAt", updated_at as "updatedAt"
      FROM job_queue WHERE hash = $1`,
     [hash]
@@ -110,7 +125,7 @@ export async function findJobById(id: string): Promise<Job | null> {
   const result = await pool.query(
     `SELECT id, hash, query, normalized_query as "normalizedQuery",
             query_type as "queryType", status,
-            current_video_id as "currentVideoId", result, error,
+            current_video_id as "currentVideoId", result, error, metadata,
             created_at as "createdAt", updated_at as "updatedAt"
      FROM job_queue WHERE id = $1`,
     [id]
@@ -126,13 +141,13 @@ export async function findJobById(id: string): Promise<Job | null> {
 export async function createJob(data: JobInsert): Promise<Job> {
   const id = uuidv4();
   const result = await pool.query(
-    `INSERT INTO job_queue (id, hash, query, normalized_query, query_type, status)
-     VALUES ($1, $2, $3, $4, $5, 'queued')
+    `INSERT INTO job_queue (id, hash, query, normalized_query, query_type, status, metadata)
+     VALUES ($1, $2, $3, $4, $5, 'queued', $6)
      RETURNING id, hash, query, normalized_query as "normalizedQuery",
                query_type as "queryType", status,
-               current_video_id as "currentVideoId", result, error,
+               current_video_id as "currentVideoId", result, error, metadata,
                created_at as "createdAt", updated_at as "updatedAt"`,
-    [id, data.hash, data.query, data.normalizedQuery, data.queryType]
+    [id, data.hash, data.query, data.normalizedQuery, data.queryType, data.metadata ? JSON.stringify(data.metadata) : null]
   );
 
   return result.rows[0];
@@ -179,7 +194,7 @@ export async function getQueuedJobs(): Promise<Job[]> {
   const result = await pool.query(
     `SELECT id, hash, query, normalized_query as "normalizedQuery",
             query_type as "queryType", status,
-            current_video_id as "currentVideoId", result, error,
+            current_video_id as "currentVideoId", result, error, metadata,
             created_at as "createdAt", updated_at as "updatedAt"
      FROM job_queue
      WHERE status = 'queued'

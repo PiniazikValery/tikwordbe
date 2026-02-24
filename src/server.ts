@@ -12,12 +12,14 @@ import wordIndexRouter from './routes/wordIndex';
 import testSearchRouter from './routes/testSearch';
 import sharedLibrariesRouter from './routes/sharedLibraries';
 import videoIndexRouter from './routes/videoIndex';
+import trendingIndexRouter from './routes/trendingIndex';
 import { initializeDatabase } from './db/videoExamples';
 import { initializeJobQueue } from './db/jobQueue';
 import { initializeSentenceAnalysisDB } from './db/sentenceAnalyses';
 import { initializeRateLimitDB } from './db/rateLimits';
 import { initializeAiPaywallDB } from './db/aiPaywall';
 import { initializeWordIndexTable } from './db/wordIndex';
+import { initializeIndexedVideosTable } from './db/indexedVideos';
 import { initializeSharedLibrariesDB } from './db/sharedLibraries';
 import { seedSharedLibraries } from './db/seedSharedLibraries';
 import { startBackgroundWorker, stopBackgroundWorker } from './services/backgroundWorker';
@@ -43,6 +45,7 @@ app.use('/word-index', wordIndexRouter);
 app.use('/test', testSearchRouter);
 app.use('/shared-libraries', sharedLibrariesRouter);
 app.use('/video-index', videoIndexRouter);
+app.use('/trending', trendingIndexRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -82,6 +85,10 @@ async function startServer() {
     await initializeWordIndexTable();
     console.log('Word index initialized successfully');
 
+    console.log('Initializing indexed videos table...');
+    await initializeIndexedVideosTable();
+    console.log('Indexed videos table initialized successfully');
+
     console.log('Initializing shared libraries database...');
     await initializeSharedLibrariesDB();
     console.log('Shared libraries database initialized successfully');
@@ -106,6 +113,7 @@ async function startServer() {
       console.log(`Shared libraries: GET http://localhost:${PORT}/shared-libraries`);
       console.log(`Share library: POST http://localhost:${PORT}/shared-libraries`);
       console.log(`Index video: POST http://localhost:${PORT}/video-index/index`);
+      console.log(`Discover trending: POST http://localhost:${PORT}/trending/discover`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

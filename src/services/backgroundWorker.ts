@@ -1,6 +1,7 @@
 import { getQueuedJobs, resetProcessingJobs } from '../db/jobQueue';
 import { processJob } from './jobProcessor';
 import { processVideoIndex } from './videoIndexProcessor';
+import { PopularityScore } from '../utils/popularity';
 
 let isRunning = false;
 let workerInterval: NodeJS.Timeout | null = null;
@@ -15,7 +16,7 @@ const POLL_INTERVAL = 2000; // 2 seconds
 const runningJobs = new Map<string, Promise<void>>();
 
 // Process a single job
-async function startJobProcessing(hash: string, normalizedQuery: string, queryType: 'word' | 'sentence' | 'video-index'): Promise<void> {
+async function startJobProcessing(hash: string, normalizedQuery: string, queryType: 'word' | 'sentence' | 'video-index', metadata?: Record<string, any>): Promise<void> {
   console.log(`\n[Background Worker] Starting job: "${normalizedQuery}" (type: ${queryType})`);
   console.log(`[Background Worker] Active jobs: ${runningJobs.size}/${MAX_CONCURRENT_JOBS}`);
 
@@ -23,7 +24,9 @@ async function startJobProcessing(hash: string, normalizedQuery: string, queryTy
     // Route to appropriate processor based on job type
     if (queryType === 'video-index') {
       // For video indexing, normalizedQuery contains the video ID
-      await processVideoIndex(hash, normalizedQuery);
+      const popularity = metadata?.popularity as PopularityScore | undefined;
+      const maxChunks = (metadata?.maxChunks as number) || 1000;
+      await processVideoIndex(hash, normalizedQuery, popularity, maxChunks);
     } else {
       // Process regular word/sentence search job
       await processJob(hash, normalizedQuery, queryType);
@@ -78,7 +81,7 @@ async function workerLoop(): Promise<void> {
       }
 
       // Start processing this job (don't await - let it run in background)
-      const jobPromise = startJobProcessing(job.hash, job.normalizedQuery, job.queryType);
+      const jobPromise = startJobProcessing(job.hash, job.normalizedQuery, job.queryType, job.metadata);
       runningJobs.set(job.hash, jobPromise);
       jobsStarted++;
     }

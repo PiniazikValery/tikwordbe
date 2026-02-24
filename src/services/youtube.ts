@@ -10,6 +10,13 @@ export interface YouTubeVideo {
   description: string;
 }
 
+export interface YouTubeVideoWithStats extends YouTubeVideo {
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  publishedAt: string;
+}
+
 /**
  * Search YouTube using yt-dlp (no API key required)
  * Uses the ytsearch: prefix to search YouTube directly
@@ -222,4 +229,79 @@ export async function isVideoEmbeddable(videoId: string): Promise<boolean> {
       resolve(false);
     });
   });
+}
+
+/**
+ * Fetch trending/most popular videos from YouTube Data API
+ * Costs 1 quota unit per request
+ */
+export async function fetchTrendingVideos(
+  regionCode: string = 'US',
+  maxResults: number = 10
+): Promise<YouTubeVideoWithStats[]> {
+  if (!YOUTUBE_API_KEY) {
+    throw new Error('YOUTUBE_API_KEY is not configured');
+  }
+
+  try {
+    const response = await axios.get(`${YOUTUBE_API_BASE_URL}/videos`, {
+      params: {
+        key: YOUTUBE_API_KEY,
+        chart: 'mostPopular',
+        regionCode,
+        part: 'snippet,statistics',
+        maxResults,
+      }
+    });
+
+    return response.data.items.map((item: any) => ({
+      videoId: item.id,
+      title: item.snippet.title,
+      description: item.snippet.description,
+      viewCount: parseInt(item.statistics.viewCount || '0'),
+      likeCount: parseInt(item.statistics.likeCount || '0'),
+      commentCount: parseInt(item.statistics.commentCount || '0'),
+      publishedAt: item.snippet.publishedAt,
+    }));
+  } catch (error: any) {
+    if (error.response?.status === 403) {
+      throw new Error('YouTube API quota exceeded or invalid API key');
+    }
+    throw new Error(`YouTube API error: ${error.message}`);
+  }
+}
+
+/**
+ * Fetch video statistics from YouTube Data API
+ * Costs 1 quota unit per request
+ * Returns null if video not found or API fails
+ */
+export async function fetchVideoStatistics(
+  videoId: string
+): Promise<{ viewCount: number; likeCount: number; commentCount: number } | null> {
+  if (!YOUTUBE_API_KEY) {
+    return null;
+  }
+
+  try {
+    const response = await axios.get(`${YOUTUBE_API_BASE_URL}/videos`, {
+      params: {
+        key: YOUTUBE_API_KEY,
+        id: videoId,
+        part: 'statistics',
+      }
+    });
+
+    if (!response.data.items || response.data.items.length === 0) return null;
+
+    const stats = response.data.items[0].statistics;
+    return {
+      viewCount: parseInt(stats.viewCount || '0'),
+      likeCount: parseInt(stats.likeCount || '0'),
+      commentCount: parseInt(stats.commentCount || '0'),
+    };
+  } catch (error: any) {
+    console.error(`Failed to fetch statistics for video ${videoId}: ${error.message}`);
+    return null;
+  }
 }

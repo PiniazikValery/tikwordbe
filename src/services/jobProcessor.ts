@@ -1,4 +1,4 @@
-import { searchVideosWithAdFilters, isVideoEmbeddable } from './youtube';
+import { searchVideosWithAdFilters, isVideoEmbeddable, fetchVideoStatistics } from './youtube';
 import { downloadAudio } from './audioDownload';
 import { transcribeAudio } from './whisper';
 import { getCaptions } from './captions';
@@ -16,6 +16,7 @@ import {
   addVideoToWordIndex,
   VideoResponse
 } from '../db/wordIndex';
+import { buildPopularityScore, PopularityScore } from '../utils/popularity';
 import fs from 'fs';
 import path from 'path';
 
@@ -235,7 +236,19 @@ export async function processJob(
           console.error(`  Warning: Failed to cache result: ${cacheError.message}`);
         }
 
-        // Step 6: Index all words from the captions
+        // Step 6: Fetch popularity score
+        let popularity: PopularityScore | undefined;
+        try {
+          const stats = await fetchVideoStatistics(video.videoId);
+          if (stats) {
+            popularity = buildPopularityScore(stats);
+            console.log(`  ✓ Popularity score: ${popularity.score} (views: ${stats.viewCount})`);
+          }
+        } catch (popError: any) {
+          console.log(`  ⚠ Could not fetch video statistics: ${popError.message}`);
+        }
+
+        // Step 7: Index all words from the captions
         try {
           const words = extractWords(boundary.caption);
           console.log(`  Indexing ${words.length} unique words...`);
@@ -246,7 +259,8 @@ export async function processJob(
             startTime: boundary.startTime,
             endTime: boundary.endTime,
             caption: boundary.caption,
-            captions: filteredCaptions
+            captions: filteredCaptions,
+            ...(popularity ? { popularity } : {}),
           };
 
           await addVideoToWordIndex(words, videoResponse);

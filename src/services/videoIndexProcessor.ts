@@ -1,4 +1,4 @@
-import { isVideoEmbeddable } from './youtube';
+import { isVideoEmbeddable, fetchVideoStatistics } from './youtube';
 import { downloadAudio } from './audioDownload';
 import { transcribeAudio } from './whisper';
 import { getCaptions } from './captions';
@@ -14,6 +14,8 @@ import {
   addVideoToWordIndex,
   VideoResponse
 } from '../db/wordIndex';
+import { PopularityScore, buildPopularityScore } from '../utils/popularity';
+import { markVideoIndexed } from '../db/indexedVideos';
 import fs from 'fs';
 import path from 'path';
 
@@ -111,7 +113,9 @@ function splitIntoSentences(captions: CaptionSegment[]): SentenceBoundary[] {
  */
 export async function processVideoIndex(
   hash: string,
-  videoId: string
+  videoId: string,
+  existingPopularity?: PopularityScore,
+  maxChunks: number = 1000
 ): Promise<void> {
   const JOB_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes timeout (longer for full video)
   const startTime = Date.now();
@@ -133,6 +137,22 @@ export async function processVideoIndex(
       return;
     }
     console.log(`  ✓ Video is embeddable`);
+
+    // Step 1b: Get popularity score
+    let popularity: PopularityScore | undefined = existingPopularity;
+    if (!popularity) {
+      try {
+        const stats = await fetchVideoStatistics(videoId);
+        if (stats) {
+          popularity = buildPopularityScore(stats);
+          console.log(`  ✓ Popularity score: ${popularity.score} (views: ${stats.viewCount})`);
+        }
+      } catch (error: any) {
+        console.log(`  ⚠ Could not fetch video statistics: ${error.message}`);
+      }
+    } else {
+      console.log(`  ✓ Using provided popularity score: ${popularity.score}`);
+    }
 
     // Step 2: Update status to downloading
     await updateJobStatus(hash, 'downloading', videoId);
@@ -157,7 +177,7 @@ export async function processVideoIndex(
       videoId,
       FULL_TRANSCRIPTION_MARKER, // Use unique marker that won't match to process all chunks
       30, // 30 second chunks (standard)
-      1000, // High limit to process entire video
+      maxChunks, // Configurable limit (1000 for full video, 30 for trending ~15min)
       useGPU
     );
     console.log(`  Transcription completed: ${whisperResult.vttPath}`);
@@ -209,7 +229,8 @@ export async function processVideoIndex(
         startTime: sentence.startTime,
         endTime: sentence.endTime,
         caption: sentence.caption,
-        captions: filteredCaptions
+        captions: filteredCaptions,
+        ...(popularity ? { popularity } : {}),
       };
 
       // Extract and index words
@@ -227,10 +248,21 @@ export async function processVideoIndex(
     totalWordsIndexed = uniqueWords.size;
     console.log(`  ✓ Indexed ${totalWordsIndexed} unique words from ${sentences.length} sentences`);
 
-    // Step 8: Cleanup temp files
+    // Step 8: Mark video as indexed
+    await markVideoIndexed(
+      videoId,
+      '',
+      popularity?.score,
+      popularity?.viewCount,
+      popularity?.likeCount,
+      popularity?.commentCount
+    );
+    console.log(`  ✓ Video marked as indexed`);
+
+    // Step 9: Cleanup temp files
     cleanupTempFiles(videoId);
 
-    // Step 9: Update job with result
+    // Step 10: Update job with result
     await updateJobResult(hash, {
       videoId: videoId,
       videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
