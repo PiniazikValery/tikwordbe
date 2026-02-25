@@ -2,6 +2,33 @@ import fs from 'fs';
 import path from 'path';
 import { CaptionSegment } from './sentenceDetector';
 
+/**
+ * Strip HTML/VTT tags and decode HTML entities from subtitle text.
+ * Handles both raw tags (<font>) and HTML-encoded tags (&lt;font&gt;).
+ */
+function cleanSubtitleText(text: string): string {
+  return text
+    // Decode HTML entities first (YouTube VTT often has pre-encoded tags)
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    // Strip VTT voice tags: <v Speaker>text</v>
+    .replace(/<v[^>]*>/gi, '')
+    .replace(/<\/v>/gi, '')
+    // Strip HTML tags: <font>, <b>, <i>, <u>, <c>, etc.
+    .replace(/<[^>]+>/g, '')
+    // Strip VTT class annotations: <c.colorE5E5E5>
+    .replace(/<c\.[^>]*>/gi, '')
+    // Remove bracketed annotations like [look after] that some subs include
+    .replace(/\[[^\]]*\]/g, '')
+    // Normalize whitespace
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function parseTimestamp(ts: string): number {
   const parts = ts.split(':');
   let seconds = 0;
@@ -58,8 +85,7 @@ function parseVTT(vttContent: string): CaptionSegment[] {
       i++;
       const cueLines: string[] = [];
       while (i < lines.length && lines[i].trim() !== '') {
-        // Strip tags immediately so overlap detection works on clean text
-        const cleanLine = lines[i].trim().replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+        const cleanLine = cleanSubtitleText(lines[i]);
         if (cleanLine) {
           cueLines.push(cleanLine);
         }
