@@ -1,6 +1,8 @@
 import { searchVideosWithAdFilters, isVideoEmbeddable, fetchVideoStatistics } from './youtube';
+import { downloadSubtitles } from './subtitleDownload';
 import { downloadAudio } from './audioDownload';
 import { transcribeAudio } from './whisper';
+import { isWhisperAvailable } from './dockerCheck';
 import { getCaptions } from './captions';
 import { findMatchingSegment, detectSentenceBoundary } from './sentenceDetector';
 import { insertVideoExample } from '../db/videoExamples';
@@ -46,6 +48,7 @@ function cleanupTempFiles(videoId: string): void {
     const tempDir = path.join(process.cwd(), 'temp');
     const audioPath = path.join(tempDir, `${videoId}.mp3`);
     const vttPath = path.join(tempDir, `${videoId}.vtt`);
+    const ytdlpVttPath = path.join(tempDir, `${videoId}.en.vtt`);
 
     if (fs.existsSync(audioPath)) {
       fs.unlinkSync(audioPath);
@@ -55,6 +58,11 @@ function cleanupTempFiles(videoId: string): void {
     if (fs.existsSync(vttPath)) {
       fs.unlinkSync(vttPath);
       console.log(`  Deleted temp VTT: ${vttPath}`);
+    }
+
+    if (fs.existsSync(ytdlpVttPath)) {
+      fs.unlinkSync(ytdlpVttPath);
+      console.log(`  Deleted temp yt-dlp VTT: ${ytdlpVttPath}`);
     }
   } catch (error: any) {
     console.error(`  Error cleaning up temp files: ${error.message}`);
@@ -150,36 +158,58 @@ export async function processJob(
         }
         console.log(`  ✓ Video is embeddable`);
 
-        // Step 3b: Update status to downloading
+        // Step 3b: Try fetching subtitles first (fast path — no audio download needed)
         await updateJobStatus(hash, 'downloading', video.videoId);
-        console.log(`Status: DOWNLOADING (Video: ${video.videoId})`);
+        let captions: any[] = [];
+        let usedSubtitles = false;
 
-        const audioResult = await downloadAudio(video.videoId);
-        console.log(`  Audio downloaded: ${audioResult.filePath} (${audioResult.fileSizeMB} MB)`);
-
-        // Step 3c: Update status to transcribing
-        await updateJobStatus(hash, 'transcribing', video.videoId);
-        console.log(`Status: TRANSCRIBING (Video: ${video.videoId})`);
-
-        const useGPU = process.env.USE_GPU === 'true';
-        const whisperResult = await transcribeAudio(audioResult.filePath, video.videoId, normalizedQuery, 30, 10, useGPU);
-        console.log(`  Transcription completed: ${whisperResult.vttPath}`);
-        if (whisperResult.stoppedEarly) {
-          console.log(`  ⚡ Early stopping: processed only ${whisperResult.chunksProcessed} chunks!`);
+        const subtitleResult = await downloadSubtitles(video.videoId);
+        if (subtitleResult.success) {
+          captions = await getCaptions(video.videoId);
+          if (captions.length > 0 && isEnglishTranscription(captions)) {
+            usedSubtitles = true;
+            console.log(`  ✓ Using YouTube subtitles (${captions.length} segments)`);
+          } else {
+            console.log(`  ⚠️ Subtitles not usable (empty or not English), falling back to Whisper...`);
+            cleanupTempFiles(video.videoId);
+            captions = [];
+          }
         }
 
-        // Step 3d: Get captions from VTT file
-        const captions = await getCaptions(video.videoId);
-        console.log(`  Loaded ${captions.length} caption segments`);
+        // Step 3c: Fallback to audio download + Whisper transcription
+        if (!usedSubtitles) {
+          if (!isWhisperAvailable()) {
+            console.log(`  ⚠️ No subtitles and Whisper not available, skipping video...`);
+            cleanupTempFiles(video.videoId);
+            continue;
+          }
 
-        // Step 3e: Check if transcription is in English
-        const isEnglish = isEnglishTranscription(captions);
-        if (!isEnglish) {
-          console.log(`  ⚠️ Transcription not in English, skipping to next video...`);
-          cleanupTempFiles(video.videoId);
-          continue;
+          console.log(`Status: DOWNLOADING (Video: ${video.videoId})`);
+
+          const audioResult = await downloadAudio(video.videoId);
+          console.log(`  Audio downloaded: ${audioResult.filePath} (${audioResult.fileSizeMB} MB)`);
+
+          await updateJobStatus(hash, 'transcribing', video.videoId);
+          console.log(`Status: TRANSCRIBING (Video: ${video.videoId})`);
+
+          const useGPU = process.env.USE_GPU === 'true';
+          const whisperResult = await transcribeAudio(audioResult.filePath, video.videoId, normalizedQuery, 30, 10, useGPU);
+          console.log(`  Transcription completed: ${whisperResult.vttPath}`);
+          if (whisperResult.stoppedEarly) {
+            console.log(`  ⚡ Early stopping: processed only ${whisperResult.chunksProcessed} chunks!`);
+          }
+
+          captions = await getCaptions(video.videoId);
+          console.log(`  Loaded ${captions.length} caption segments`);
+
+          const isEnglish = isEnglishTranscription(captions);
+          if (!isEnglish) {
+            console.log(`  ⚠️ Transcription not in English, skipping to next video...`);
+            cleanupTempFiles(video.videoId);
+            continue;
+          }
+          console.log(`  ✓ Transcription validated as English`);
         }
-        console.log(`  ✓ Transcription validated as English`);
 
         // Step 3f: Find matching segment
         const matchIndex = findMatchingSegment(captions, normalizedQuery, queryType);
@@ -194,6 +224,22 @@ export async function processJob(
 
         // Step 3g: Detect sentence boundary
         const boundary = detectSentenceBoundary(captions, matchIndex);
+
+        // Quality check: verify the caption has real speech (not just [Music] tags)
+        const speechText = boundary.caption.replace(/\[[\w\s]+\]/gi, '').trim();
+        if (speechText.length < 5) {
+          console.log(`  ⚠️ Caption is mostly non-speech tags ("${boundary.caption}"), skipping video...`);
+          cleanupTempFiles(video.videoId);
+          continue;
+        }
+
+        // Quality check: clip should not be excessively long (max ~35 seconds)
+        const clipDuration = boundary.endTime - boundary.startTime;
+        if (clipDuration > 35) {
+          console.log(`  ⚠️ Clip too long (${clipDuration.toFixed(1)}s), skipping video...`);
+          cleanupTempFiles(video.videoId);
+          continue;
+        }
 
         // Filter captions to only include segments within the matched range
         const filteredCaptions: CaptionSegment[] = captions

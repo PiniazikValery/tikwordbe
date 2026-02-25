@@ -23,6 +23,7 @@ import { initializeIndexedVideosTable } from './db/indexedVideos';
 import { initializeSharedLibrariesDB } from './db/sharedLibraries';
 import { seedSharedLibraries } from './db/seedSharedLibraries';
 import { startBackgroundWorker, stopBackgroundWorker } from './services/backgroundWorker';
+import { checkWhisperAvailability } from './services/dockerCheck';
 
 // Debug: Check if env vars are loaded
 console.log('Environment check:');
@@ -96,6 +97,9 @@ async function startServer() {
     console.log('Seeding shared libraries...');
     await seedSharedLibraries();
     console.log('Shared libraries seeding complete');
+
+    console.log('Checking Whisper Docker image...');
+    checkWhisperAvailability();
 
     console.log('Starting background worker...');
     startBackgroundWorker();

@@ -1,6 +1,8 @@
 import { isVideoEmbeddable, fetchVideoStatistics } from './youtube';
+import { downloadSubtitles } from './subtitleDownload';
 import { downloadAudio } from './audioDownload';
 import { transcribeAudio } from './whisper';
+import { isWhisperAvailable } from './dockerCheck';
 import { getCaptions } from './captions';
 import { CaptionSegment, SentenceBoundary } from './sentenceDetector';
 import {
@@ -45,6 +47,7 @@ function cleanupTempFiles(videoId: string): void {
     const tempDir = path.join(process.cwd(), 'temp');
     const audioPath = path.join(tempDir, `${videoId}.mp3`);
     const vttPath = path.join(tempDir, `${videoId}.vtt`);
+    const ytdlpVttPath = path.join(tempDir, `${videoId}.en.vtt`);
 
     if (fs.existsSync(audioPath)) {
       fs.unlinkSync(audioPath);
@@ -54,6 +57,11 @@ function cleanupTempFiles(videoId: string): void {
     if (fs.existsSync(vttPath)) {
       fs.unlinkSync(vttPath);
       console.log(`  Deleted temp VTT: ${vttPath}`);
+    }
+
+    if (fs.existsSync(ytdlpVttPath)) {
+      fs.unlinkSync(ytdlpVttPath);
+      console.log(`  Deleted temp yt-dlp VTT: ${ytdlpVttPath}`);
     }
   } catch (error: any) {
     console.error(`  Error cleaning up temp files: ${error.message}`);
@@ -65,43 +73,56 @@ function cleanupTempFiles(videoId: string): void {
  * Each segment represents a complete sentence (or fragment if no punctuation found)
  */
 function splitIntoSentences(captions: CaptionSegment[]): SentenceBoundary[] {
+  const MAX_SENTENCE_DURATION = 30; // seconds — force-split if no punctuation found
   const sentences: SentenceBoundary[] = [];
 
   if (captions.length === 0) return sentences;
 
   let sentenceStartIndex = 0;
 
+  const flushSentence = (endIndex: number) => {
+    const captionParts: string[] = [];
+    for (let j = sentenceStartIndex; j <= endIndex; j++) {
+      captionParts.push(captions[j].text);
+    }
+
+    const startSegment = captions[sentenceStartIndex];
+    const endSegment = captions[endIndex];
+    const startTime = startSegment.start;
+    const endTime = endSegment.start + endSegment.duration + 0.5;
+
+    const captionText = captionParts.join(' ').trim();
+
+    // Strip [Music]/[Applause] tags and check for real speech
+    const speechText = captionText.replace(/\[[\w\s]+\]/gi, '').trim();
+
+    // Only add if we have meaningful speech content (at least 2 real words)
+    const wordCount = speechText.split(/\s+/).filter(w => w.length > 0).length;
+    if (wordCount >= 2) {
+      sentences.push({
+        startTime,
+        endTime,
+        caption: captionText
+      });
+    }
+
+    sentenceStartIndex = endIndex + 1;
+  };
+
   for (let i = 0; i < captions.length; i++) {
     const caption = captions[i];
     const trimmedText = caption.text.trim();
+    const currentStart = captions[sentenceStartIndex].start;
+    const currentDuration = caption.start + caption.duration - currentStart;
 
-    // Check if this caption ends with sentence-ending punctuation
+    // Force-split if duration exceeds cap (even without punctuation)
+    if (currentDuration > MAX_SENTENCE_DURATION && i > sentenceStartIndex) {
+      flushSentence(i - 1);
+    }
+
+    // Split on punctuation or end of captions
     if (/[.!?]$/.test(trimmedText) || i === captions.length - 1) {
-      // Collect all captions from start to current
-      const captionParts: string[] = [];
-      for (let j = sentenceStartIndex; j <= i; j++) {
-        captionParts.push(captions[j].text);
-      }
-
-      const startSegment = captions[sentenceStartIndex];
-      const endSegment = captions[i];
-      const startTime = startSegment.start;
-      const endTime = endSegment.start + endSegment.duration + 0.5; // Small buffer
-
-      const captionText = captionParts.join(' ').trim();
-
-      // Only add if we have meaningful content (at least 2 words)
-      const wordCount = captionText.split(/\s+/).filter(w => w.length > 0).length;
-      if (wordCount >= 2) {
-        sentences.push({
-          startTime,
-          endTime,
-          caption: captionText
-        });
-      }
-
-      // Start next sentence from the next caption
-      sentenceStartIndex = i + 1;
+      flushSentence(i);
     }
   }
 
@@ -154,48 +175,67 @@ export async function processVideoIndex(
       console.log(`  ✓ Using provided popularity score: ${popularity.score}`);
     }
 
-    // Step 2: Update status to downloading
+    // Step 2: Try fetching subtitles first (fast path — no audio download needed)
     await updateJobStatus(hash, 'downloading', videoId);
-    console.log(`Status: DOWNLOADING (Video: ${videoId})`);
+    let captions: CaptionSegment[] = [];
+    let usedSubtitles = false;
 
-    const audioResult = await downloadAudio(videoId);
-    console.log(`  Audio downloaded: ${audioResult.filePath} (${audioResult.fileSizeMB} MB)`);
-
-    checkTimeout();
-
-    // Step 3: Update status to transcribing
-    await updateJobStatus(hash, 'transcribing', videoId);
-    console.log(`Status: TRANSCRIBING (Video: ${videoId})`);
-
-    const useGPU = process.env.USE_GPU === 'true';
-    // For full video indexing, don't use early stopping - transcribe the entire video
-    // Use a unique marker that won't be found in video content to prevent early stopping
-    // Pass a large maxChunks value to process all chunks (30s each, 1000 chunks = ~8 hours of video)
-    const FULL_TRANSCRIPTION_MARKER = '__XYZFULLVIDEOXYZ12345__';
-    const whisperResult = await transcribeAudio(
-      audioResult.filePath,
-      videoId,
-      FULL_TRANSCRIPTION_MARKER, // Use unique marker that won't match to process all chunks
-      30, // 30 second chunks (standard)
-      maxChunks, // Configurable limit (1000 for full video, 30 for trending ~15min)
-      useGPU
-    );
-    console.log(`  Transcription completed: ${whisperResult.vttPath}`);
-
-    checkTimeout();
-
-    // Step 4: Get captions from VTT file
-    const captions = await getCaptions(videoId);
-    console.log(`  Loaded ${captions.length} caption segments`);
-
-    // Step 5: Check if transcription is in English
-    const isEnglish = isEnglishTranscription(captions);
-    if (!isEnglish) {
-      cleanupTempFiles(videoId);
-      await updateJobError(hash, 'Video transcription is not in English');
-      return;
+    const subtitleResult = await downloadSubtitles(videoId);
+    if (subtitleResult.success) {
+      captions = await getCaptions(videoId);
+      if (captions.length > 0 && isEnglishTranscription(captions)) {
+        usedSubtitles = true;
+        console.log(`  ✓ Using YouTube subtitles (${captions.length} segments)`);
+      } else {
+        console.log(`  ⚠️ Subtitles not usable (empty or not English), falling back to Whisper...`);
+        cleanupTempFiles(videoId);
+        captions = [];
+      }
     }
-    console.log(`  ✓ Transcription validated as English`);
+
+    // Step 3: Fallback to audio download + Whisper transcription
+    if (!usedSubtitles) {
+      if (!isWhisperAvailable()) {
+        console.log(`  ⚠️ No subtitles and Whisper not available, cannot process video`);
+        await updateJobError(hash, 'No subtitles available and Whisper is not installed');
+        return;
+      }
+
+      console.log(`Status: DOWNLOADING (Video: ${videoId})`);
+
+      const audioResult = await downloadAudio(videoId);
+      console.log(`  Audio downloaded: ${audioResult.filePath} (${audioResult.fileSizeMB} MB)`);
+
+      checkTimeout();
+
+      await updateJobStatus(hash, 'transcribing', videoId);
+      console.log(`Status: TRANSCRIBING (Video: ${videoId})`);
+
+      const useGPU = process.env.USE_GPU === 'true';
+      const FULL_TRANSCRIPTION_MARKER = '__XYZFULLVIDEOXYZ12345__';
+      const whisperResult = await transcribeAudio(
+        audioResult.filePath,
+        videoId,
+        FULL_TRANSCRIPTION_MARKER,
+        30,
+        maxChunks,
+        useGPU
+      );
+      console.log(`  Transcription completed: ${whisperResult.vttPath}`);
+
+      checkTimeout();
+
+      captions = await getCaptions(videoId);
+      console.log(`  Loaded ${captions.length} caption segments`);
+
+      const isEnglish = isEnglishTranscription(captions);
+      if (!isEnglish) {
+        cleanupTempFiles(videoId);
+        await updateJobError(hash, 'Video transcription is not in English');
+        return;
+      }
+      console.log(`  ✓ Transcription validated as English`);
+    }
 
     // Step 6: Split into sentences
     await updateJobStatus(hash, 'searching', videoId); // Using 'searching' as 'indexing' status

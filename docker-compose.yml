@@ -19,5 +19,19 @@ services:
       timeout: 5s
       retries: 5
 
+  whisper-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.whisper.gpu
+    image: tickword-whisper-gpu:latest
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    entrypoint: ["echo", "Whisper GPU image built successfully"]
+
 volumes:
   postgres_data:

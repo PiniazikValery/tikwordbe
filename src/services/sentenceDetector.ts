@@ -14,12 +14,23 @@ export function detectSentenceBoundary(
   segments: CaptionSegment[],
   matchIndex: number
 ): SentenceBoundary {
-  // Step 1: Find the start of the sentence by looking backward
+  const MAX_BEFORE = 15; // seconds before the matched word
+  const MAX_AFTER = 15;  // seconds after the matched word
+
+  const matchStart = segments[matchIndex].start;
+
+  // Step 1: Find the start — prefer sentence boundary, but cap at MAX_BEFORE seconds
   let startIndex = matchIndex;
 
-  // Look backward to find where the sentence actually starts
   for (let i = matchIndex - 1; i >= 0; i--) {
     const segment = segments[i];
+
+    // Stop if we'd exceed the time window
+    if (matchStart - segment.start > MAX_BEFORE) {
+      startIndex = i + 1;
+      break;
+    }
+
     const trimmedText = segment.text.trim();
 
     // If we find sentence-ending punctuation, the sentence starts AFTER this segment
@@ -34,12 +45,18 @@ export function detectSentenceBoundary(
     }
   }
 
-  // Step 2: Find the end of the sentence by looking forward
+  // Step 2: Find the end — prefer sentence boundary, but cap at MAX_AFTER seconds
   let endIndex = matchIndex;
 
-  // Look forward to find where the sentence ends
   for (let i = matchIndex; i < segments.length; i++) {
     const segment = segments[i];
+
+    // Stop if we'd exceed the time window (but always include the match itself)
+    if (i > matchIndex && segment.start - matchStart > MAX_AFTER) {
+      endIndex = i - 1;
+      break;
+    }
+
     endIndex = i;
 
     // Check if this segment ends with sentence-ending punctuation
@@ -123,22 +140,44 @@ function phraseMatchWithVariations(text: string, query: string): boolean {
   return true;
 }
 
+// Check if a segment is purely non-speech (music, applause, etc.)
+function isNonSpeechSegment(text: string): boolean {
+  // Strip all [Tags] and check if anything meaningful remains
+  const stripped = text.replace(/\[[\w\s]+\]/gi, '').trim();
+  return stripped.length === 0;
+}
+
+// Clean non-speech tags from text for matching purposes
+function stripNonSpeechTags(text: string): string {
+  return text.replace(/\[[\w\s]+\]/gi, '').trim();
+}
+
 export function findMatchingSegment(
   segments: CaptionSegment[],
   query: string,
   queryType: 'word' | 'sentence'
 ): number {
   const normalizedQuery = query.toLowerCase();
+  // Also create a hyphen-insensitive version for matching compound words
+  // "spiderman" should match "spider-man" and vice versa
+  const dehyphenatedQuery = normalizedQuery.replace(/-/g, '');
 
   // First pass: exact matches
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i];
-    const normalizedText = segment.text.toLowerCase();
+    if (isNonSpeechSegment(segment.text)) continue; // Skip [Music], [Applause], etc.
+    const normalizedText = stripNonSpeechTags(segment.text).toLowerCase();
+    const dehyphenatedText = normalizedText.replace(/-/g, '');
 
     if (queryType === 'word') {
       // For words: exact word boundary match preferred
       const wordRegex = new RegExp(`\\b${escapeRegExp(normalizedQuery)}\\b`, 'i');
       if (wordRegex.test(normalizedText)) {
+        return i;
+      }
+      // Also try matching without hyphens
+      const dehyphenRegex = new RegExp(`\\b${escapeRegExp(dehyphenatedQuery)}\\b`, 'i');
+      if (dehyphenRegex.test(dehyphenatedText)) {
         return i;
       }
     } else {
@@ -153,9 +192,10 @@ export function findMatchingSegment(
   if (queryType === 'sentence') {
     // For multi-word phrases, check within a context window (3 segments)
     for (let i = 0; i < segments.length; i++) {
+      if (isNonSpeechSegment(segments[i].text)) continue;
       // Check current segment + next 2 segments as context
       const contextSegments = segments.slice(i, Math.min(i + 3, segments.length));
-      const contextText = contextSegments.map(s => s.text).join(' ');
+      const contextText = contextSegments.map(s => stripNonSpeechTags(s.text)).join(' ');
 
       if (phraseMatchWithVariations(contextText, normalizedQuery)) {
         return i;
@@ -167,8 +207,10 @@ export function findMatchingSegment(
   if (queryType === 'word') {
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
-      const normalizedText = segment.text.toLowerCase();
-      if (normalizedText.includes(normalizedQuery)) {
+      if (isNonSpeechSegment(segment.text)) continue;
+      const normalizedText = stripNonSpeechTags(segment.text).toLowerCase();
+      const dehyphenatedText = normalizedText.replace(/-/g, '');
+      if (normalizedText.includes(normalizedQuery) || dehyphenatedText.includes(dehyphenatedQuery)) {
         return i;
       }
     }
