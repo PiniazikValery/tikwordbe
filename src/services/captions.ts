@@ -24,6 +24,9 @@ function cleanSubtitleText(text: string): string {
     .replace(/<c\.[^>]*>/gi, '')
     // Remove bracketed annotations like [look after] that some subs include
     .replace(/\[[^\]]*\]/g, '')
+    // Remove VTT speaker indicators (>> or >>Name:)
+    .replace(/>>\s*[\w\s]*:/g, '')
+    .replace(/>>/g, '')
     // Normalize whitespace
     .replace(/\s+/g, ' ')
     .trim();

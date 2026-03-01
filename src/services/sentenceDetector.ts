@@ -19,7 +19,7 @@ export function detectSentenceBoundary(
 
   const matchStart = segments[matchIndex].start;
 
-  // Step 1: Find the start — prefer sentence boundary, but cap at MAX_BEFORE seconds
+  // Step 1: Find the start — include all segments within MAX_BEFORE seconds
   let startIndex = matchIndex;
 
   for (let i = matchIndex - 1; i >= 0; i--) {
@@ -31,13 +31,7 @@ export function detectSentenceBoundary(
       break;
     }
 
-    const trimmedText = segment.text.trim();
-
-    // If we find sentence-ending punctuation, the sentence starts AFTER this segment
-    if (/[.!?]$/.test(trimmedText)) {
-      startIndex = i + 1;
-      break;
-    }
+    startIndex = i;
 
     // If we've reached the beginning, start from index 0
     if (i === 0) {
@@ -45,7 +39,7 @@ export function detectSentenceBoundary(
     }
   }
 
-  // Step 2: Find the end — prefer sentence boundary, but cap at MAX_AFTER seconds
+  // Step 2: Find the end — include all segments within MAX_AFTER seconds
   let endIndex = matchIndex;
 
   for (let i = matchIndex; i < segments.length; i++) {
@@ -58,12 +52,6 @@ export function detectSentenceBoundary(
     }
 
     endIndex = i;
-
-    // Check if this segment ends with sentence-ending punctuation
-    const trimmedText = segment.text.trim();
-    if (/[.!?]$/.test(trimmedText)) {
-      break;
-    }
   }
 
   // Step 3: Collect all caption parts from start to end
