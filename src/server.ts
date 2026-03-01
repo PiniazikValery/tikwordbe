@@ -53,6 +53,12 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Version endpoint for mobile app force-update checks
+app.get('/version', (req, res) => {
+  const minimumVersion = process.env.APP_MINIMUM_VERSION || '1.0.0';
+  res.json({ minimumVersion });
+});
+
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Unhandled error:', err);
