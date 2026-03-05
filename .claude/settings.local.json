@@ -10,7 +10,8 @@
       "Bash(npm run bulk-search:*)",
       "Bash(tree:*)",
       "Bash(find:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(grep -l \"<[0-9][0-9]:[0-9][0-9]:\" /c/Users/Valery/Documents/Projects/TickWordBE/temp/*.vtt)"
     ],
     "deny": [],
     "ask": []

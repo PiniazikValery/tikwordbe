@@ -3,7 +3,7 @@ import { downloadSubtitles } from './subtitleDownload';
 import { downloadAudio } from './audioDownload';
 import { transcribeAudio } from './whisper';
 import { isWhisperAvailable } from './dockerCheck';
-import { getCaptions } from './captions';
+import { getCaptions, groupWordCaptions } from './captions';
 import { CaptionSegment, SentenceBoundary } from './sentenceDetector';
 import {
   updateJobStatus,
@@ -41,6 +41,78 @@ function isEnglishTranscription(captions: CaptionSegment[]): boolean {
   return englishWordCount >= 5 && nonLatinRatio < 0.2;
 }
 
+// Check if captions are mostly music/non-speech (e.g. music videos, ambient sounds)
+function isMusicOrNonSpeech(captions: CaptionSegment[]): boolean {
+  if (captions.length === 0) return true;
+
+  const allText = captions.map(c => c.text).join(' ');
+  const totalLength = allText.length;
+  if (totalLength === 0) return true;
+
+  // Count [Music], [Applause], [Laughter] etc. tag characters
+  const tagMatches = allText.match(/\[[\w\s]+\]/gi) || [];
+  const tagLength = tagMatches.reduce((sum, tag) => sum + tag.length, 0);
+  const tagRatio = tagLength / totalLength;
+
+  // Count segments that are purely non-speech tags
+  const nonSpeechSegments = captions.filter(c => {
+    const stripped = c.text.replace(/\[[\w\s]+\]/gi, '').trim();
+    return stripped.length === 0;
+  }).length;
+  const nonSpeechRatio = nonSpeechSegments / captions.length;
+
+  // Check for very sparse speech — music videos have short bursts of lyrics with long gaps
+  const totalDuration = captions.length > 0
+    ? captions[captions.length - 1].start + captions[captions.length - 1].duration - captions[0].start
+    : 0;
+  const speechSegments = captions.filter(c => c.text.replace(/\[[\w\s]+\]/gi, '').trim().length > 0);
+  const speechDuration = speechSegments.reduce((sum, c) => sum + c.duration, 0);
+  const speechRatio = totalDuration > 0 ? speechDuration / totalDuration : 0;
+
+  // Average words per segment (low for music lyrics — short phrases)
+  const totalWords = speechSegments.reduce((sum, c) => {
+    return sum + c.text.replace(/\[[\w\s]+\]/gi, '').trim().split(/\s+/).filter(w => w.length > 0).length;
+  }, 0);
+  const avgWordsPerSegment = speechSegments.length > 0 ? totalWords / speechSegments.length : 0;
+
+  console.log(`  [MusicCheck] totalSegments=${captions.length}, nonSpeechSegments=${nonSpeechSegments} (${(nonSpeechRatio * 100).toFixed(1)}%), tagRatio=${(tagRatio * 100).toFixed(1)}%, speechRatio=${(speechRatio * 100).toFixed(1)}%, avgWordsPerSeg=${avgWordsPerSegment.toFixed(1)}, totalDuration=${totalDuration.toFixed(0)}s`);
+  console.log(`  [MusicCheck] First 5 captions: ${captions.slice(0, 5).map(c => JSON.stringify(c.text)).join(', ')}`);
+  console.log(`  [MusicCheck] Sample from middle: ${captions.slice(Math.floor(captions.length / 2), Math.floor(captions.length / 2) + 3).map(c => JSON.stringify(c.text)).join(', ')}`);
+
+  // If more than 30% of text is tags, or more than 40% of segments are non-speech, it's music
+  if (tagRatio > 0.3 || nonSpeechRatio > 0.4) {
+    console.log(`  [MusicCheck] REJECTED: high tag/non-speech ratio`);
+    return true;
+  }
+
+  // If speech covers less than 20% of total duration, it's likely music
+  if (totalDuration > 30 && speechRatio < 0.2) {
+    console.log(`  [MusicCheck] REJECTED: sparse speech (${(speechRatio * 100).toFixed(1)}% of duration)`);
+    return true;
+  }
+
+  // Detect word-level VTT (each segment ≈ 1 word with very short duration)
+  // Word-level VTTs have avg segment duration < 1.5s — skip words-per-segment check for those
+  const avgSegmentDuration = speechSegments.length > 0
+    ? speechDuration / speechSegments.length
+    : 0;
+  const isWordLevelVTT = avgSegmentDuration < 1.5 && avgWordsPerSegment <= 1.5;
+
+  // Music lyrics tend to have very few words per caption segment (1-2 words each)
+  // Normal speech has 3+ words per segment on average
+  if (!isWordLevelVTT && avgWordsPerSegment < 2 && speechSegments.length > 20) {
+    console.log(`  [MusicCheck] REJECTED: low words per segment (${avgWordsPerSegment.toFixed(1)} avg) — likely lyrics`);
+    return true;
+  }
+
+  if (isWordLevelVTT) {
+    console.log(`  [MusicCheck] Detected word-level VTT (${avgSegmentDuration.toFixed(2)}s avg segment duration) — skipping words-per-segment check`);
+  }
+
+  console.log(`  [MusicCheck] PASSED: appears to be speech content`);
+  return false;
+}
+
 // Cleanup temporary files
 function cleanupTempFiles(videoId: string): void {
   try {
@@ -73,23 +145,36 @@ function cleanupTempFiles(videoId: string): void {
  * Each segment represents a complete sentence (or fragment if no punctuation found)
  */
 function splitIntoSentences(captions: CaptionSegment[]): SentenceBoundary[] {
-  const MAX_SENTENCE_DURATION = 30; // seconds — force-split if no punctuation found
+  const MIN_SENTENCE_DURATION = 30; // seconds — merge short sentences until this minimum
+  const MAX_SENTENCE_DURATION = 60; // seconds — force-split if no punctuation found
   const sentences: SentenceBoundary[] = [];
 
   if (captions.length === 0) return sentences;
 
   let sentenceStartIndex = 0;
 
-  const flushSentence = (endIndex: number) => {
+  const flushSentence = (endIndex: number, force: boolean = false) => {
+    const startSegment = captions[sentenceStartIndex];
+    const endSegment = captions[endIndex];
+    const rawDuration = endSegment.start + endSegment.duration - startSegment.start;
+
+    // Don't flush if below minimum duration — skip short fragments entirely
+    if (rawDuration < MIN_SENTENCE_DURATION) {
+      console.log(`  [Split] Skipping short fragment (${rawDuration.toFixed(1)}s < ${MIN_SENTENCE_DURATION}s, force=${force}): "${captions.slice(sentenceStartIndex, endIndex + 1).map(c => c.text).join(' ').substring(0, 80)}..."`);
+      if (force) {
+        // Even when forced, discard fragments shorter than minimum — they're scraps
+        sentenceStartIndex = endIndex + 1;
+      }
+      return;
+    }
+
     const captionParts: string[] = [];
     for (let j = sentenceStartIndex; j <= endIndex; j++) {
       captionParts.push(captions[j].text);
     }
 
-    const startSegment = captions[sentenceStartIndex];
-    const endSegment = captions[endIndex];
-    const startTime = startSegment.start;
-    const endTime = endSegment.start + endSegment.duration + 0.5;
+    const startTime = Math.max(0, startSegment.start);
+    const endTime = endSegment.start + endSegment.duration;
 
     const captionText = captionParts.join(' ').trim();
 
@@ -99,11 +184,14 @@ function splitIntoSentences(captions: CaptionSegment[]): SentenceBoundary[] {
     // Only add if we have meaningful speech content (at least 2 real words)
     const wordCount = speechText.split(/\s+/).filter(w => w.length > 0).length;
     if (wordCount >= 2) {
+      console.log(`  [Split] Created fragment #${sentences.length + 1}: ${rawDuration.toFixed(1)}s (${startTime.toFixed(1)}s-${endTime.toFixed(1)}s), ${wordCount} words: "${captionText.substring(0, 100)}..."`);
       sentences.push({
         startTime,
         endTime,
         caption: captionText
       });
+    } else {
+      console.log(`  [Split] Discarded fragment (only ${wordCount} word(s)): "${captionText.substring(0, 80)}"`);
     }
 
     sentenceStartIndex = endIndex + 1;
@@ -115,14 +203,19 @@ function splitIntoSentences(captions: CaptionSegment[]): SentenceBoundary[] {
     const currentStart = captions[sentenceStartIndex].start;
     const currentDuration = caption.start + caption.duration - currentStart;
 
-    // Force-split if duration exceeds cap (even without punctuation)
+    // Force-split if duration exceeds max cap (even without punctuation)
     if (currentDuration > MAX_SENTENCE_DURATION && i > sentenceStartIndex) {
-      flushSentence(i - 1);
+      flushSentence(i - 1, true);
     }
 
-    // Split on punctuation or end of captions
-    if (/[.!?]$/.test(trimmedText) || i === captions.length - 1) {
+    // Try to split on punctuation — but only if minimum duration is met
+    if (/[.!?]$/.test(trimmedText)) {
       flushSentence(i);
+    }
+
+    // Force flush at end of captions
+    if (i === captions.length - 1 && sentenceStartIndex <= i) {
+      flushSentence(i, true);
     }
   }
 
@@ -136,7 +229,10 @@ export async function processVideoIndex(
   hash: string,
   videoId: string,
   existingPopularity?: PopularityScore,
-  maxChunks: number = 1000
+  maxChunks: number = 1000,
+  clipStartTime?: number,
+  clipEndTime?: number,
+  source: string = 'auto'
 ): Promise<void> {
   const JOB_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes timeout (longer for full video)
   const startTime = Date.now();
@@ -183,11 +279,11 @@ export async function processVideoIndex(
     const subtitleResult = await downloadSubtitles(videoId);
     if (subtitleResult.success) {
       captions = await getCaptions(videoId);
-      if (captions.length > 0 && isEnglishTranscription(captions)) {
+      if (captions.length > 0 && isEnglishTranscription(captions) && !isMusicOrNonSpeech(captions)) {
         usedSubtitles = true;
         console.log(`  ✓ Using YouTube subtitles (${captions.length} segments)`);
       } else {
-        console.log(`  ⚠️ Subtitles not usable (empty or not English), falling back to Whisper...`);
+        console.log(`  ⚠️ Subtitles not usable (empty, not English, or mostly music), falling back to Whisper...`);
         cleanupTempFiles(videoId);
         captions = [];
       }
@@ -235,6 +331,31 @@ export async function processVideoIndex(
         return;
       }
       console.log(`  ✓ Transcription validated as English`);
+
+      if (isMusicOrNonSpeech(captions)) {
+        cleanupTempFiles(videoId);
+        await updateJobError(hash, 'Video is mostly music or non-speech content');
+        return;
+      }
+      console.log(`  ✓ Validated as speech-heavy content`);
+    }
+
+    // Step 5b: Filter captions to time range if specified
+    if (clipStartTime !== undefined || clipEndTime !== undefined) {
+      const before = captions.length;
+      captions = captions.filter(c => {
+        const segEnd = c.start + c.duration;
+        if (clipStartTime !== undefined && segEnd <= clipStartTime) return false;
+        if (clipEndTime !== undefined && c.start >= clipEndTime) return false;
+        return true;
+      });
+      console.log(`  Filtered captions to time range [${clipStartTime ?? 0}s - ${clipEndTime ?? 'end'}s]: ${before} → ${captions.length} segments`);
+
+      if (captions.length === 0) {
+        await updateJobError(hash, `No captions found in time range [${clipStartTime ?? 0}s - ${clipEndTime ?? 'end'}s]`);
+        cleanupTempFiles(videoId);
+        return;
+      }
     }
 
     // Step 6: Split into sentences
@@ -252,7 +373,7 @@ export async function processVideoIndex(
       const sentence = sentences[i];
 
       // Create filtered captions for this sentence
-      const filteredCaptions: JobCaptionSegment[] = captions
+      const rawFilteredCaptions: JobCaptionSegment[] = captions
         .filter(c => {
           const segmentEnd = c.start + c.duration;
           return c.start < sentence.endTime && segmentEnd > sentence.startTime;
@@ -263,14 +384,22 @@ export async function processVideoIndex(
           text: c.text
         }));
 
+      // Group word-level captions into natural phrases for display
+      const filteredCaptions = groupWordCaptions(rawFilteredCaptions);
+
+      // Use actual caption boundaries for startTime/endTime so they match the captions array
+      const actualStart = filteredCaptions.length > 0 ? filteredCaptions[0].start : sentence.startTime;
+      const actualEnd = filteredCaptions.length > 0 ? filteredCaptions[filteredCaptions.length - 1].end : sentence.endTime;
+
       const videoResponse: VideoResponse = {
         videoId: videoId,
         videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-        startTime: sentence.startTime,
-        endTime: sentence.endTime,
+        startTime: actualStart,
+        endTime: actualEnd,
         caption: sentence.caption,
         captions: filteredCaptions,
         ...(popularity ? { popularity } : {}),
+        source,
       };
 
       // Extract and index words

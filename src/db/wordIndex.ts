@@ -26,6 +26,7 @@ export interface VideoResponse {
     commentCount: number;
     calculatedAt: string;
   };
+  source?: string; // 'manual' | 'auto'
 }
 
 export interface WordIndexEntry {

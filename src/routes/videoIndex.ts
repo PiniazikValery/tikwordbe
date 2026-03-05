@@ -13,6 +13,8 @@ const router = Router();
 interface IndexVideoRequest {
   videoUrl: string;
   jobId?: string; // Optional: for polling a specific job by ID
+  startTime?: number; // Optional: clip start in seconds
+  endTime?: number;   // Optional: clip end in seconds
 }
 
 // Response when job is completed
@@ -68,10 +70,18 @@ function extractVideoId(url: string): string | null {
 
 router.post('/index', async (req: Request<{}, {}, IndexVideoRequest>, res: Response<IndexVideoResponse | ErrorResponse>) => {
   try {
-    const { videoUrl, jobId } = req.body;
+    const { videoUrl, jobId, startTime: clipStart, endTime: clipEnd } = req.body;
 
     if (!videoUrl) {
       return res.status(400).json({ error: 'videoUrl is required' });
+    }
+
+    // Validate time range
+    if (clipStart !== undefined && clipStart < 0) {
+      return res.status(400).json({ error: 'startTime must be >= 0' });
+    }
+    if (clipEnd !== undefined && clipStart !== undefined && clipEnd <= clipStart) {
+      return res.status(400).json({ error: 'endTime must be greater than startTime' });
     }
 
     // Extract video ID from URL
@@ -114,8 +124,9 @@ router.post('/index', async (req: Request<{}, {}, IndexVideoRequest>, res: Respo
       return res.json(getInProgressResponse(job.id, videoId, job.status as JobStatus));
     }
 
-    // Generate hash using video ID as the query (prefixed to avoid collision with word searches)
-    const hash = generateHash(`video-index:${videoId}`);
+    // Generate hash — include time range so different clips create different jobs
+    const rangeKey = `${clipStart ?? 0}-${clipEnd ?? 'full'}`;
+    const hash = generateHash(`video-index:${videoId}:${rangeKey}`);
 
     // Check if job already exists in queue
     const existingJob = await findJobByHash(hash);
@@ -147,12 +158,17 @@ router.post('/index', async (req: Request<{}, {}, IndexVideoRequest>, res: Respo
     }
 
     // Create new job with special query type 'video-index'
-    console.log(`Creating new video index job for: ${videoId}`);
+    console.log(`Creating new video index job for: ${videoId} (range: ${rangeKey})`);
     const newJob = await createJob({
       hash,
       query: videoUrl,
       normalizedQuery: videoId, // Store video ID as normalized query
-      queryType: 'video-index' as any // Special type for video indexing
+      queryType: 'video-index' as any, // Special type for video indexing
+      metadata: {
+        source: 'manual',
+        ...(clipStart !== undefined ? { startTime: clipStart } : {}),
+        ...(clipEnd !== undefined ? { endTime: clipEnd } : {}),
+      },
     });
 
     // Return queued status

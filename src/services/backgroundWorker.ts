@@ -26,7 +26,10 @@ async function startJobProcessing(hash: string, normalizedQuery: string, queryTy
       // For video indexing, normalizedQuery contains the video ID
       const popularity = metadata?.popularity as PopularityScore | undefined;
       const maxChunks = (metadata?.maxChunks as number) || 1000;
-      await processVideoIndex(hash, normalizedQuery, popularity, maxChunks);
+      const clipStart = metadata?.startTime as number | undefined;
+      const clipEnd = metadata?.endTime as number | undefined;
+      const source = (metadata?.source as string) || 'auto';
+      await processVideoIndex(hash, normalizedQuery, popularity, maxChunks, clipStart, clipEnd, source);
     } else {
       // Process regular word/sentence search job
       await processJob(hash, normalizedQuery, queryType);

@@ -1,9 +1,9 @@
-import { searchVideosWithAdFilters, isVideoEmbeddable, fetchVideoStatistics } from './youtube';
+import { searchVideosWithAdFilters, getVideoDetails, fetchVideoStatistics, VideoDetails } from './youtube';
 import { downloadSubtitles } from './subtitleDownload';
 import { downloadAudio } from './audioDownload';
 import { transcribeAudio } from './whisper';
 import { isWhisperAvailable } from './dockerCheck';
-import { getCaptions } from './captions';
+import { getCaptions, groupWordCaptions } from './captions';
 import { findMatchingSegment, detectSentenceBoundary } from './sentenceDetector';
 import { insertVideoExample } from '../db/videoExamples';
 import {
@@ -142,21 +142,55 @@ export async function processJob(
       return;
     }
 
-    // Step 3: Loop through videos to find English video with matching word
-    for (let i = 0; i < allVideos.length; i++) {
+    // Step 3: Gather video details and sort to prefer non-monetized videos (no pre-roll ads)
+    console.log(`\nChecking video details for ad-likelihood...`);
+    const videoDetailsMap = new Map<string, VideoDetails>();
+    for (const video of allVideos) {
+      checkTimeout();
+      const details = await getVideoDetails(video.videoId);
+      videoDetailsMap.set(video.videoId, details);
+      const subsLabel = details.channelFollowerCount !== undefined
+        ? `${details.channelFollowerCount} subs`
+        : 'unknown subs';
+      const ccLabel = details.isCreativeCommons ? ', CC' : '';
+      const durLabel = details.duration !== undefined ? `, ${Math.round(details.duration)}s` : '';
+      console.log(`  ${video.videoId}: embeddable=${details.embeddable}, adScore=${details.adLikelihoodScore} (${subsLabel}${ccLabel}${durLabel})`);
+    }
+
+    // Filter to embeddable videos, then sort by ad-likelihood score ascending (least ads first)
+    const sortedVideos = allVideos
+      .filter(v => {
+        const d = videoDetailsMap.get(v.videoId);
+        return d && d.embeddable;
+      })
+      .sort((a, b) => {
+        const da = videoDetailsMap.get(a.videoId)!;
+        const db = videoDetailsMap.get(b.videoId)!;
+        return da.adLikelihoodScore - db.adLikelihoodScore;
+      });
+
+    const nonMonetizedCount = sortedVideos.filter(v => !videoDetailsMap.get(v.videoId)!.isLikelyMonetized).length;
+    console.log(`\n${sortedVideos.length} embeddable videos (${nonMonetizedCount} likely ad-free, ${sortedVideos.length - nonMonetizedCount} likely monetized)`);
+
+    if (sortedVideos.length === 0) {
+      await updateJobError(hash, 'No embeddable videos found for this query');
+      return;
+    }
+
+    // Process videos in order: lowest ad-likelihood first, monetized as fallback
+    for (let i = 0; i < sortedVideos.length; i++) {
       checkTimeout(); // Check timeout before processing each video
 
-      const video = allVideos[i];
-      console.log(`\nProcessing video ${i + 1}/${allVideos.length}: ${video.videoId} - "${video.title}"`);
+      const video = sortedVideos[i];
+      const details = videoDetailsMap.get(video.videoId)!;
+      const adsLabel = details.isCreativeCommons
+        ? '🆓 Creative Commons'
+        : details.isLikelyMonetized
+          ? `💰 monetized (score ${details.adLikelihoodScore})`
+          : `✅ likely ad-free (score ${details.adLikelihoodScore})`;
+      console.log(`\nProcessing video ${i + 1}/${sortedVideos.length}: ${video.videoId} - "${video.title}" [${adsLabel}]`);
 
       try {
-        // Step 3a: Check if video is embeddable
-        const embeddable = await isVideoEmbeddable(video.videoId);
-        if (!embeddable) {
-          console.log(`  ⚠️ Video ${video.videoId} is not embeddable, skipping...`);
-          continue;
-        }
-        console.log(`  ✓ Video is embeddable`);
 
         // Step 3b: Try fetching subtitles first (fast path — no audio download needed)
         await updateJobStatus(hash, 'downloading', video.videoId);
@@ -242,7 +276,7 @@ export async function processJob(
         }
 
         // Filter captions to only include segments within the matched range
-        const filteredCaptions: CaptionSegment[] = captions
+        const rawFilteredCaptions: CaptionSegment[] = captions
           .filter(c => {
             const segmentEnd = c.start + c.duration;
             return c.start < boundary.endTime && segmentEnd > boundary.startTime;
@@ -252,6 +286,9 @@ export async function processJob(
             end: c.start + c.duration,
             text: c.text
           }));
+
+        // Group word-level captions into natural phrases for display
+        const filteredCaptions = groupWordCaptions(rawFilteredCaptions);
 
         const result: JobResult = {
           videoId: video.videoId,
@@ -307,6 +344,7 @@ export async function processJob(
             caption: boundary.caption,
             captions: filteredCaptions,
             ...(popularity ? { popularity } : {}),
+            source: 'auto',
           };
 
           await addVideoToWordIndex(words, videoResponse);
@@ -330,7 +368,7 @@ export async function processJob(
     // If we get here, no suitable video was found
     await updateJobError(
       hash,
-      `No English video found with the word "${normalizedQuery}". Tried ${allVideos.length} videos.`
+      `No English video found with the word "${normalizedQuery}". Tried ${sortedVideos.length} embeddable videos (out of ${allVideos.length} candidates).`
     );
     console.log(`Status: FAILED - No suitable video found`);
   } catch (error: any) {

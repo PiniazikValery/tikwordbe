@@ -60,11 +60,11 @@ export function detectSentenceBoundary(
     captionParts.push(segments[i].text);
   }
 
-  // Step 4: Calculate start and end times
+  // Step 4: Calculate start and end times with padding for natural playback
   const startSegment = segments[startIndex];
   const endSegment = segments[endIndex];
-  const startTime = startSegment.start;
-  const endTime = endSegment.start + endSegment.duration + 2; // Add 2 seconds buffer
+  const startTime = Math.max(0, startSegment.start);
+  const endTime = endSegment.start + endSegment.duration;
 
   // Step 5: Combine caption parts into a single sentence
   const caption = captionParts.join(' ').trim();
